@@ -81,7 +81,7 @@ async function loadUsers() {
 }
 
 function mapProfile(row) {
-  const name = row.full_name || row.name || row.username || row.email || "-";
+  const name = row.full_name || row.username || row.email || "-";
   return {
     id: row.id,
     fullName: name,
@@ -231,19 +231,19 @@ function populateBranchSelect(id) {
 }
 
 async function insertProfile(payload) {
-  const direct = await supabaseClient.from("profiles").insert(payload);
-  if (!direct.error) return direct;
-  const fallback = { ...payload, name: payload.full_name };
-  delete fallback.full_name;
-  return supabaseClient.from("profiles").insert(fallback);
+  return supabaseClient.from("profiles").insert(profilePayload(payload));
 }
 
 async function updateProfile(id, payload) {
-  const direct = await supabaseClient.from("profiles").update(payload).eq("id", id);
-  if (!direct.error) return direct;
-  const fallback = { ...payload, name: payload.full_name };
-  delete fallback.full_name;
-  return supabaseClient.from("profiles").update(fallback).eq("id", id);
+  return supabaseClient.from("profiles").update(profilePayload(payload)).eq("id", id);
+}
+
+function profilePayload(payload) {
+  const allowed = ["id", "email", "username", "full_name", "role", "branch_id", "status"];
+  return allowed.reduce((result, key) => {
+    if (Object.prototype.hasOwnProperty.call(payload, key)) result[key] = payload[key];
+    return result;
+  }, {});
 }
 
 async function signUpAuthUser(email, password, metadata) {
