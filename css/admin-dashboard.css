@@ -401,6 +401,8 @@ body {
 .status-onprocess { background: #fef9c3; color: #a16207; border: 1px solid #fde047; }
 .status-completed  { background: var(--green-light); color: var(--green); border: 1px solid #86efac; }
 .status-pending    { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
+.status-active      { background: var(--green-light); color: var(--green); border: 1px solid #86efac; }
+.status-inactive    { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
  
 /* Action buttons */
 .action-btns {

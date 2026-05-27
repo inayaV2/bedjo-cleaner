@@ -86,7 +86,7 @@ function mapProfile(row) {
     email: row.email || "-",
     role: normalizeRole(row.role),
     branch_id: row.branch_id || "",
-    branch: row.branches?.name || branchName(row.branch_id) || row.branch || "-",
+    branch: row.branches?.name || branchName(row.branch_id) || row.branch || "Branch belum diset",
     status: normalizeUserStatus(row.status),
   };
 }
@@ -164,10 +164,12 @@ async function saveEditUser() {
     full_name: value("editFullName"),
     username: value("editUsername"),
     email: value("editEmail"),
-    role: value("editRole"),
-    branch_id: value("editBranch") || null,
+    role: normalizeRole(value("editRole")),
+    branch_id: value("editBranch"),
     status: value("editStatus") || "active",
   };
+
+  if (!payload.branch_id) return alert("Branch wajib dipilih.");
 
   const { error } = await updateProfile(u.id, payload);
   if (error) return alert("Gagal update user: " + error.message);

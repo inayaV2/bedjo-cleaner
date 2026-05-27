@@ -87,7 +87,7 @@ function mapProfile(row) {
     email: row.email || "-",
     role: normalizeRole(row.role),
     branch_id: row.branch_id || "",
-    branch: row.branches?.name || branchName(row.branch_id) || row.branch || "-",
+    branch: row.branches?.name || branchName(row.branch_id) || row.branch || "Branch belum diset",
     status: normalizeUserStatus(row.status),
   };
 }
@@ -100,6 +100,7 @@ function renderTable(data) {
   tbody.innerHTML = data.map((u, i) => `
     <tr>
       <td>${escapeHtml(u.username)}</td>
+      <td>${escapeHtml(u.fullName)}</td>
       <td>${escapeHtml(u.email)}</td>
       <td>${roleBadge(u.role)}</td>
       <td>${escapeHtml(u.branch)}</td>
@@ -119,26 +120,46 @@ async function createUser() {
   const lastName = value("lastName");
   const email = value("emailInput");
   const username = value("usernameInput");
+  const password = value("passwordInput");
   const role = value("roleInput") || "operator";
   const branchId = value("branchInput");
   const fullName = [firstName, lastName].filter(Boolean).join(" ");
 
-  if (!fullName || !email || !username || !role) return alert("Please fill in all required fields.");
+  if (!fullName || !email || !username || !password || !role || !branchId) {
+    return alert("Please fill in all required fields, including password and branch.");
+  }
+
+  const authResult = await signUpAuthUser(email, password, {
+    full_name: fullName,
+    username,
+    role,
+  });
+
+  if (authResult.error) {
+    console.error("Gagal create auth user:", authResult.error);
+    return alert("Akun login harus dibuat di Supabase Authentication, lalu profile bisa disimpan di table profiles.\n\nError: " + (authResult.error.message || authResult.error));
+  }
+
+  const authUserId = authResult.data?.user?.id;
+  if (!authUserId) {
+    return alert("Akun login harus dibuat di Supabase Authentication, lalu profile bisa disimpan di table profiles.");
+  }
 
   const payload = {
+    id: authUserId,
     full_name: fullName,
     username,
     email,
-    role,
+    role: normalizeRole(role),
+    branch_id: branchId,
     status: "active",
   };
-  if (branchId) payload.branch_id = branchId;
 
   const { error } = await insertProfile(payload);
   if (error) return alert("Gagal menyimpan user: " + error.message);
 
   logActivity("user-plus", `User Created: ${username}`);
-  ["firstName", "lastName", "emailInput", "usernameInput"].forEach(id => setInput(id, ""));
+  ["firstName", "lastName", "emailInput", "usernameInput", "passwordInput"].forEach(id => setInput(id, ""));
   setInput("roleInput", "operator");
   setInput("branchInput", "");
   await loadUsers();
@@ -164,10 +185,12 @@ async function saveEditUser() {
   const payload = {
     username: value("editUsername"),
     email: value("editEmail"),
-    role: value("editRole"),
+    role: normalizeRole(value("editRole")),
     status: value("editStatus") || "active",
-    branch_id: value("editBranch") || null,
+    branch_id: value("editBranch"),
   };
+
+  if (!payload.branch_id) return alert("Branch wajib dipilih.");
 
   const { error } = await updateProfile(u.id, payload);
   if (error) return alert("Gagal update user: " + error.message);
@@ -190,6 +213,7 @@ function applySearch() {
   const q = value("searchInput").toLowerCase();
   currentRows = users.filter(u =>
     u.username.toLowerCase().includes(q) ||
+    u.fullName.toLowerCase().includes(q) ||
     u.email.toLowerCase().includes(q) ||
     u.role.toLowerCase().includes(q) ||
     u.branch.toLowerCase().includes(q)
@@ -220,6 +244,26 @@ async function updateProfile(id, payload) {
   return supabaseClient.from("profiles").update(fallback).eq("id", id);
 }
 
+async function signUpAuthUser(email, password, metadata) {
+  const supabaseUrl = window.BEDJO_SUPABASE_URL || SUPABASE_URL;
+  const supabaseAnonKey = window.BEDJO_SUPABASE_ANON_KEY || SUPABASE_ANON_KEY;
+  const authClient = supabase.createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+
+  return authClient.auth.signUp({
+    email,
+    password,
+    options: {
+      data: metadata,
+    },
+  });
+}
+
 function roleBadge(role) {
   const label = normalizeRole(role).toUpperCase();
   const cls = label === "ADMIN" ? "badge-admin" : "badge-operator";
@@ -228,12 +272,12 @@ function roleBadge(role) {
 
 function statusBadge(status) {
   const normalized = normalizeUserStatus(status);
-  return `<span class="status-badge ${normalized === "active" ? "status-completed" : "status-pending"}">${normalized.toUpperCase()}</span>`;
+  return `<span class="status-badge ${normalized === "active" ? "status-active" : "status-inactive"}">${normalized.toUpperCase()}</span>`;
 }
 
 function showTableMessage(message) {
   const tbody = document.getElementById("userTableBody");
-  if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px;color:#94a3b8">${escapeHtml(message)}</td></tr>`;
+  if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:#94a3b8">${escapeHtml(message)}</td></tr>`;
 }
 
 function logActivity(icon, label) {
