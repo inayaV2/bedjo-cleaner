@@ -200,13 +200,18 @@ document.getElementById("btnDlQR")?.addEventListener("click", () => {
 });
 document.getElementById("btnWA")?.addEventListener("click", () => {
   const code = order?.order_code || order?.id || "";
-  const completed = normalizeStatus(order?.status) === "completed";
-  const message = completed
-    ? `Halo ${order?.customer_name || ""}, pesanan laundry kamu dengan kode ${code} sudah selesai dan bisa diambil.`
-    : `Halo ${order?.customer_name || ""}, berikut link tracking pesanan Bedjo Cleaner kamu: ${trackingUrl}`;
+  const customerName = order?.customer_name || "";
+  const status = formatStatus(order?.status);
+  const url = window.BedjoUrl?.tracking ? window.BedjoUrl.tracking(code) : trackingUrl;
+  const message = `Halo ${customerName}, pesanan Bedjo Cleaner kamu dengan kode #${code} saat ini statusnya ${status}. Kamu bisa cek tracking di ${url}`;
   const text = encodeURIComponent(message);
-  const phone = String(order?.customer_phone || "").replace(/[^0-9]/g, "");
-  window.open(phone ? `https://wa.me/${phone}?text=${text}` : `https://wa.me/?text=${text}`, "_blank");
+  const rawPhone = order?.customer_phone || "";
+  const phone = normalizeIndonesiaPhone(rawPhone);
+  const waUrl = phone ? `https://wa.me/${phone}?text=${text}` : `https://wa.me/?text=${text}`;
+  console.log("customer phone raw:", rawPhone);
+  console.log("customer phone normalized:", phone);
+  console.log("whatsapp url:", waUrl);
+  window.open(waUrl, "_blank");
 });
 document.getElementById("btnCopy")?.addEventListener("click", () => {
   navigator.clipboard.writeText(trackingUrl);
@@ -568,6 +573,13 @@ function buildTrackingUrl(orderCode) {
   url.searchParams.set("code", orderCode);
   url.searchParams.set("v", "20260519-3");
   return url.href;
+}
+
+function normalizeIndonesiaPhone(phone) {
+  let cleaned = String(phone || "").replace(/[\s\-()]/g, "").trim();
+  if (cleaned.startsWith("+62")) cleaned = cleaned.slice(1);
+  if (cleaned.startsWith("08")) cleaned = `628${cleaned.slice(2)}`;
+  return cleaned.replace(/[^0-9]/g, "");
 }
 
 function displayTrackingUrl(url) {
