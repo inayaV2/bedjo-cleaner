@@ -333,10 +333,8 @@ function fallbackBranches() {
 }
 
 function displayBranch(row) {
-  return normalizeBranchName(row.branches?.name) ||
-    branchName(row.branch_id) ||
-    normalizeBranchName(row.branch) ||
-    ALLOWED_BRANCH_NAMES[0];
+  if (!row.branch_id) return "Belum diset";
+  return branchName(row.branch_id) || "Belum diset";
 }
 
 function value(id) {
