@@ -1,4 +1,5 @@
 const session = JSON.parse(sessionStorage.getItem("bc_session") || "null");
+const DASHBOARD_ORDER_LIMIT = 7;
 let dashboardOrders = [];
 let activeQrOrder = null;
 
@@ -106,12 +107,16 @@ function renderTable(orders) {
   const tblBody = document.getElementById("tblBody");
   if (!tblBody) return;
 
-  if (!orders.length) {
+  const latestOrders = [...orders]
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+    .slice(0, DASHBOARD_ORDER_LIMIT);
+
+  if (!latestOrders.length) {
     renderTableState("Belum ada data order");
     return;
   }
 
-  tblBody.innerHTML = orders.map(order => {
+  tblBody.innerHTML = latestOrders.map(order => {
     const status = normalizeStatus(order.status);
     const statusClass = status === "completed" ? "badge-ok" : ["on_process", "process"].includes(status) ? "badge-on" : "badge-pnd";
 
