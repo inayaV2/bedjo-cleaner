@@ -36,6 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
   ensureTrackingDom();
   const params = new URLSearchParams(window.location.search);
   const code = normalizeTrackingCode(params.get("code") || params.get("order_id") || params.get("id"));
+  console.log("tracking URL code:", code);
 
   if (code) {
     if (inputEl) inputEl.value = code;
@@ -179,6 +180,16 @@ function renderOrder(order) {
   const renderedServiceType = serviceNames(order);
   const renderedItemType = itemTypes(order);
   const renderedPaymentStatus = paymentStatusText(payment);
+  console.log("tracking DOM render targets:", {
+    serviceTypeEl: document.getElementById("service-type"),
+    itemTypeEl: document.getElementById("item-type"),
+    paymentStatusEl: document.getElementById("payment-status"),
+  });
+  console.log("tracking final render values:", {
+    serviceType: renderedServiceType,
+    itemType: renderedItemType,
+    paymentStatus: renderedPaymentStatus,
+  });
 
   setText("avatar-initials", name.charAt(0).toUpperCase());
   setText("customer-name", name);
