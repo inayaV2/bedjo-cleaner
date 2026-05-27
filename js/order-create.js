@@ -850,20 +850,19 @@ function buildOrderItemsPayload(orderId, pricing) {
     const item = detail.item;
     const price = parsePrice(detail.price) || parsePrice(item.price) || 20000;
     const qty = Number(detail.quantity || item.qty || 1);
+    const serviceType = detail.service_name || item.service || "";
     const payload = {
       order_id: orderId,
       item_type: item.type,
       notes: item.note || null,
       quantity: qty,
       price: price,
-      subtotal: price * qty
+      subtotal: price * qty,
+      service_type: serviceType || null
     };
 
     if (isUuid(detail.service_id || item.serviceId)) {
       payload.service_id = detail.service_id || item.serviceId;
-    }
-    if (item.hasServiceTypeColumn || supportsServiceTypeColumn) {
-      payload.service_type = detail.service_name || item.service;
     }
     if (item.hasColorColumn) {
       payload.color = item.color || null;
