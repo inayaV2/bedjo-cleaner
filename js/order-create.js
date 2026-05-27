@@ -36,6 +36,7 @@ const SERVICE_PRICE_FALLBACK = {
   "bag cleaning": 22000,
   "tas cleaning": 22000,
 };
+const ALLOWED_BRANCH_NAMES = ["BEC", "Ciwalk", "PVJ", "TSM", "BTC"];
 
 function renderItems() {
   const container = document.getElementById("itemsSection");
@@ -182,21 +183,21 @@ async function loadBranches() {
     );
 
     if (error) throw error;
-    if (!data?.length) return;
 
     const drop = document.getElementById("branchDropdown");
     const textEl = document.getElementById("branchText");
     if (!drop) return;
+    const branchOptions = uniqueAllowedBranchRecords(data);
+    const source = branchOptions.length ? branchOptions : fallbackBranches();
 
-    drop.innerHTML = data.map(branch => `
+    drop.innerHTML = source.map(branch => `
       <div class="fselect-opt" data-val="${escapeAttr(branch.id)}">
-        <span class="opt-title">${escapeHtml(branch.name || branch.id)}</span>
-        ${branch.address || branch.location ? `<span class="opt-sub">${escapeHtml(branch.address || branch.location)}</span>` : ""}
+        <span class="opt-title">${escapeHtml(branch.name)}</span>
       </div>
     `).join("");
 
     bindSelectOptions(drop, textEl, v => selectedBranch = v);
-    if (selectedBranch) setCustomSelect("branchDropdown", "branchText", selectedBranch, selectedBranch);
+    if (selectedBranch) setCustomSelect("branchDropdown", "branchText", selectedBranch, branchNameByValue(selectedBranch) || "Choose branch");
   } catch (error) {
     console.warn("Gagal memuat branches, fallback ke opsi statis:", error);
   }
@@ -485,7 +486,7 @@ async function saveOrderToSupabase() {
       orderPayload.operator_id = session.user_id;
     }
 
-    // Branch di HTML masih jakarta/bandung/bekasi, sedangkan database butuh UUID.
+    // Branch dari Supabase memakai UUID; fallback statis hanya untuk menjaga UI tetap bisa dibuka.
     if (isUuid(selectedBranch)) {
       orderPayload.branch_id = selectedBranch;
     }
@@ -720,7 +721,7 @@ function fillEditForm(order, orderItems, payment) {
   selectedPayment = payment?.method || "";
   selectedStatus = normalizeStatus(order.status || "pending");
 
-  setCustomSelect("branchDropdown", "branchText", selectedBranch, order.branches?.name || order.branch_id || "Choose branch");
+  setCustomSelect("branchDropdown", "branchText", selectedBranch, branchNameByValue(selectedBranch) || normalizeBranchName(order.branches?.name) || "Choose branch");
   setCustomSelect("paymentDropdown", "paymentText", selectedPayment, null);
   setCustomSelect("statusDropdown", "statusText", selectedStatus, null);
   supportsServiceTypeColumn = supportsServiceTypeColumn || orderItems.some(item => Object.prototype.hasOwnProperty.call(item, "service_type"));
@@ -1005,6 +1006,32 @@ function setCustomSelect(dropdownId, textId, value, fallbackLabel) {
     textEl.textContent = match?.querySelector(".opt-title")?.textContent || fallbackLabel || value || "-";
     textEl.parentElement?.classList.add("selected");
   }
+}
+
+function normalizeBranchName(name) {
+  const raw = String(name || "").trim().toLowerCase();
+  return ALLOWED_BRANCH_NAMES.find(branch => branch.toLowerCase() === raw) || "";
+}
+
+function uniqueAllowedBranchRecords(rows) {
+  const seen = new Set();
+  return (rows || []).reduce((result, row) => {
+    const name = normalizeBranchName(row?.name || row?.branch || row?.id);
+    if (!name || seen.has(name)) return result;
+    seen.add(name);
+    result.push({ ...row, id: row.id || name, name });
+    return result;
+  }, []);
+}
+
+function fallbackBranches() {
+  return ALLOWED_BRANCH_NAMES.map(name => ({ id: name, name }));
+}
+
+function branchNameByValue(value) {
+  const dropdown = document.getElementById("branchDropdown");
+  const match = dropdown ? [...dropdown.querySelectorAll(".fselect-opt")].find(opt => opt.dataset.val === value) : null;
+  return match?.querySelector(".opt-title")?.textContent || normalizeBranchName(value);
 }
 
 async function createNotification(payload) {

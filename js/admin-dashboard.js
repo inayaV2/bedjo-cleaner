@@ -5,6 +5,7 @@ let users = [];
 let branches = [];
 let currentRows = [];
 let activities = [];
+const ALLOWED_BRANCH_NAMES = ["BEC", "Ciwalk", "PVJ", "TSM", "BTC"];
 
 document.addEventListener("DOMContentLoaded", async () => {
   initShell();
@@ -52,7 +53,8 @@ function initShell() {
 async function loadBranches() {
   const { data, error } = await supabaseClient.from("branches").select("id, name").order("name");
   if (error) console.warn("Gagal load branches:", error);
-  branches = data || [];
+  branches = uniqueAllowedBranchRecords(data);
+  if (!branches.length) branches = fallbackBranches();
   populateBranchSelect("branchInput");
   populateBranchSelect("editBranch");
 }
@@ -87,7 +89,7 @@ function mapProfile(row) {
     email: row.email || "-",
     role: normalizeRole(row.role),
     branch_id: row.branch_id || "",
-    branch: row.branches?.name || branchName(row.branch_id) || row.branch || "Branch belum diset",
+    branch: displayBranch(row),
     status: normalizeUserStatus(row.status),
   };
 }
@@ -306,7 +308,35 @@ function normalizeUserStatus(status) {
 }
 
 function branchName(id) {
-  return branches.find(branch => branch.id === id)?.name || "";
+  const match = branches.find(branch => String(branch.id) === String(id));
+  return normalizeBranchName(match?.name || id);
+}
+
+function normalizeBranchName(name) {
+  const raw = String(name || "").trim().toLowerCase();
+  return ALLOWED_BRANCH_NAMES.find(branch => branch.toLowerCase() === raw) || "";
+}
+
+function uniqueAllowedBranchRecords(rows) {
+  const seen = new Set();
+  return (rows || []).reduce((result, row) => {
+    const name = normalizeBranchName(row?.name || row?.branch || row?.id);
+    if (!name || seen.has(name)) return result;
+    seen.add(name);
+    result.push({ ...row, id: row.id || name, name });
+    return result;
+  }, []);
+}
+
+function fallbackBranches() {
+  return ALLOWED_BRANCH_NAMES.map(name => ({ id: name, name }));
+}
+
+function displayBranch(row) {
+  return normalizeBranchName(row.branches?.name) ||
+    branchName(row.branch_id) ||
+    normalizeBranchName(row.branch) ||
+    ALLOWED_BRANCH_NAMES[0];
 }
 
 function value(id) {

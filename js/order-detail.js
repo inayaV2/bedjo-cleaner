@@ -13,6 +13,7 @@ const SERVICE_PRICE_FALLBACK = {
   "sepatu shoes cleaning": 20000,
   "tas bag cleaning": 22000,
 };
+const ALLOWED_BRANCH_NAMES = ["BEC", "Ciwalk", "PVJ", "TSM", "BTC"];
 
 document.addEventListener("DOMContentLoaded", async () => {
   initShell();
@@ -146,7 +147,7 @@ function renderOrder() {
   setText("iWa", order.customer_phone || "-");
   setText("iEmail", order.customer_email || "-");
   setText("iService", serviceNames(order));
-  setText("iBranch", order.branches?.name || order.branch_id || "-");
+  setText("iBranch", displayBranchName(order.branches?.name || order.branch_id));
   setText("iNote", notes(order));
   const colorText = colors(order);
   setColorVisibility(Boolean(colorText && colorText !== "-"));
@@ -515,6 +516,15 @@ function stripServiceFromNotes(note) {
 
 function colors(row) {
   return (row.order_items || []).map(item => item.color).filter(Boolean).join(", ") || "-";
+}
+
+function displayBranchName(value) {
+  return normalizeBranchName(value) || "-";
+}
+
+function normalizeBranchName(name) {
+  const raw = String(name || "").trim().toLowerCase();
+  return ALLOWED_BRANCH_NAMES.find(branch => branch.toLowerCase() === raw) || "";
 }
 
 function normalizeLookup(value) {
