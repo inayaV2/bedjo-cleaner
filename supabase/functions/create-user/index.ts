@@ -41,6 +41,10 @@ serve(async (req) => {
       return jsonResponse({ error: "first_name, email, username, password, role, and branch_id are required" }, 400);
     }
 
+    if (!isUuid(branchId)) {
+      return jsonResponse({ error: "branch_id must be a valid branch UUID from public.branches" }, 400);
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
@@ -107,6 +111,10 @@ serve(async (req) => {
 
 function normalizeRole(role: unknown) {
   return String(role || "operator").toLowerCase() === "admin" ? "admin" : "operator";
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 function jsonResponse(body: unknown, status = 200) {

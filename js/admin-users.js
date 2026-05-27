@@ -55,7 +55,6 @@ async function loadBranches() {
   const { data, error } = await supabaseClient.from("branches").select("id, name").order("name");
   if (error) console.warn("Gagal load branches:", error);
   branches = uniqueAllowedBranchRecords(data);
-  if (!branches.length) branches = fallbackBranches();
   populateBranchSelect("editBranch");
 }
 
@@ -273,7 +272,7 @@ function shortId(id) {
 
 function branchName(id) {
   const match = branches.find(branch => String(branch.id) === String(id));
-  return normalizeBranchName(match?.name || id);
+  return normalizeBranchName(match?.name);
 }
 
 function normalizeBranchName(name) {
@@ -285,6 +284,7 @@ function uniqueAllowedBranchRecords(rows) {
   const seen = new Set();
   return (rows || []).reduce((result, row) => {
     const name = normalizeBranchName(row?.name || row?.branch || row?.id);
+    if (!row?.id || !isUuid(row.id)) return result;
     if (!name || seen.has(name)) return result;
     seen.add(name);
     result.push({ ...row, id: row.id || name, name });
@@ -292,13 +292,13 @@ function uniqueAllowedBranchRecords(rows) {
   }, []);
 }
 
-function fallbackBranches() {
-  return ALLOWED_BRANCH_NAMES.map(name => ({ id: name, name }));
-}
-
 function displayBranch(row) {
   if (!row.branch_id) return "Belum diset";
   return branchName(row.branch_id) || "Belum diset";
+}
+
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value || "");
 }
 
 function value(id) {
