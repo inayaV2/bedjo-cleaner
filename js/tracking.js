@@ -111,52 +111,41 @@ async function fetchTrackingOrder(orderCode) {
 
 async function fetchOrderItems(orderId) {
   if (!orderId) return [];
-  const withServices = await supabaseClient
-    .from("order_items")
-    .select(`
-      id,
-      order_id,
-      item_type,
-      service_type,
-      service_name,
-      color,
-      notes,
-      quantity,
-      price,
-      subtotal,
-      services (
-        name,
-        price,
-        category
-      )
-    `)
-    .eq("order_id", orderId)
-    .order("id", { ascending: true });
-
-  if (!withServices.error) return withServices.data || [];
-  console.warn("Tracking order_items services relation failed, retry simple:", withServices.error);
-
   const simple = await supabaseClient
     .from("order_items")
-    .select(`
-      id,
-      order_id,
-      item_type,
-      service_type,
-      service_name,
-      color,
-      notes,
-      quantity,
-      price,
-      subtotal
-    `)
+    .select("*")
     .eq("order_id", orderId)
     .order("id", { ascending: true });
+
   if (simple.error) {
     console.warn("Tracking order_items fetch error:", simple.error);
     return [];
   }
-  return simple.data || [];
+
+  const items = simple.data || [];
+  console.log("raw tracking order_items:", items);
+  await attachServices(items);
+  return items;
+}
+
+async function attachServices(items) {
+  const serviceIds = [...new Set(items.map(item => item.service_id).filter(Boolean))];
+  if (!serviceIds.length) return;
+
+  const { data, error } = await supabaseClient
+    .from("services")
+    .select("id, name, price, category")
+    .in("id", serviceIds);
+
+  if (error) {
+    console.warn("Tracking services fetch error:", error);
+    return;
+  }
+
+  const map = new Map((data || []).map(service => [String(service.id), service]));
+  items.forEach(item => {
+    item.services = map.get(String(item.service_id)) || null;
+  });
 }
 
 async function fetchPayments(orderId) {
@@ -363,12 +352,12 @@ function showError() {
 }
 
 function serviceNames(order) {
-  const names = (order.order_items || []).map(item => item.service_type || item.services?.name || item.service_name || serviceFromNotes(item.notes)).filter(Boolean);
+  const names = (order.order_items || []).map(serviceValue).filter(Boolean);
   return [...new Set(names)].join(", ") || "-";
 }
 
 function itemTypes(order) {
-  const names = (order.order_items || []).map(item => item.item_type).filter(Boolean);
+  const names = (order.order_items || []).map(item => item.item_type || item.item_name || item.name).filter(Boolean);
   return [...new Set(names)].join(", ") || "-";
 }
 
@@ -378,6 +367,21 @@ function notes(order) {
 
 function serviceFromNotes(note) {
   return String(note || "").match(/^\[service_type:([^\]]+)\]/i)?.[1]?.trim() || "";
+}
+
+function serviceValue(item) {
+  return item.service_type ||
+    item.service_name ||
+    item.service ||
+    item.services?.name ||
+    serviceFromNotes(item.notes || item.note) ||
+    shortNoteFallback(item.notes || item.note);
+}
+
+function shortNoteFallback(note) {
+  const value = stripServiceFromNotes(note);
+  if (!value || value.length > 32 || /[,.;]/.test(value)) return "";
+  return value;
 }
 
 function stripServiceFromNotes(note) {
