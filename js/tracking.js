@@ -377,7 +377,7 @@ function serviceNames(order) {
 }
 
 function itemTypes(order) {
-  const names = (order.order_items || []).map(item => item.item_type || item.item_name || item.name).filter(Boolean);
+  const names = (order.order_items || []).map(item => item.item_type).filter(Boolean);
   return [...new Set(names)].join(", ") || "-";
 }
 
@@ -392,16 +392,7 @@ function serviceFromNotes(note) {
 function serviceValue(item) {
   return item.service_type ||
     item.service_name ||
-    item.service ||
-    item.services?.name ||
-    serviceFromNotes(item.notes || item.note) ||
-    shortNoteFallback(item.notes || item.note);
-}
-
-function shortNoteFallback(note) {
-  const value = stripServiceFromNotes(note);
-  if (!value || value.length > 32 || /[,.;]/.test(value)) return "";
-  return value;
+    serviceFromNotes(item.notes || item.note);
 }
 
 function stripServiceFromNotes(note) {
