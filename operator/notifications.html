@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Notifications | Bedjo Cleaner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/operator-dashboard.css" />
+  <link rel="stylesheet" href="../css/orders.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="../js/supabase.js?v=20260527-1"></script>
+  <script defer src="../js/auth-guard.js?v=20260527-1"></script>
+  <script defer src="../js/notifications.js?v=20260527-1"></script>
+</head>
+<body>
+  <div class="overlay" id="overlay"></div>
+  <aside class="drawer" id="drawer">
+    <div class="drawer-brand">
+      <img src="../assets/logo.png" alt="Bedjo Cleaner" class="drawer-logo-img" />
+      <span class="brand-name">Bedjo Cleaner</span>
+    </div>
+    <div class="drawer-line"></div>
+    <nav class="drawer-nav">
+      <a href="operator-dashboard.html" class="nav-item">Dashboard</a>
+      <a href="orders.html" class="nav-item">Orders</a>
+      <a href="transactions.html" class="nav-item">Transactions</a>
+      <a href="notifications.html" class="nav-item active">Notifications</a>
+    </nav>
+  </aside>
+
+  <div class="main-wrap" id="mainWrap">
+    <header class="topbar">
+      <div class="tb-left">
+        <button class="hamburger" id="hamburger" aria-label="Toggle menu">☰</button>
+        <img src="../assets/logo.png" alt="Logo" class="tb-logo" />
+        <div class="tb-title-wrap">
+          <h1 class="tb-title">Notifications</h1>
+          <p class="tb-sub">Update aktivitas order, payment, dan status</p>
+        </div>
+      </div>
+      <div class="tb-right">
+        <button class="btn-outline" id="btnMarkAll">Mark all read</button>
+        <button class="btn-create" id="btnClearAll">Clear all</button>
+      </div>
+    </header>
+
+    <main class="content">
+      <div class="card">
+        <h2 class="section-h">Notifications</h2>
+        <div id="notificationsList" style="display:grid;gap:12px;"></div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,174 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orders – Operator | Bedjo Cleaner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/operator-dashboard.css" />
+  <link rel="stylesheet" href="../css/orders.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="../js/supabase.js?v=20260520-2"></script>
+  <script defer src="../js/auth-guard.js?v=20260520-2"></script>
+  <script defer src="../js/orders.js?v=20260520-2"></script>
+</head>
+<body>
+
+  <div class="overlay" id="overlay"></div>
+
+  <aside class="drawer" id="drawer">
+    <div class="drawer-brand">
+      <img src="../assets/logo.png" alt="Bedjo Cleaner" class="drawer-logo-img" />
+      <span class="brand-name">Bedjo Cleaner</span>
+    </div>
+    <div class="drawer-line"></div>
+    <nav class="drawer-nav">
+      <a href="operator-dashboard.html" class="nav-item">
+        <svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+        </svg>
+        Dashboard
+      </a>
+      <a href="orders.html" class="nav-item active">
+        <svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="9"/>
+        </svg>
+        Orders
+      </a>
+      <a href="transactions.html" class="nav-item">
+        <svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="5" cy="6" r="2" fill="currentColor" stroke="none"/>
+          <circle cx="5" cy="12" r="2" fill="currentColor" stroke="none"/>
+          <circle cx="5" cy="18" r="2" fill="currentColor" stroke="none"/>
+          <line x1="10" y1="6" x2="21" y2="6"/>
+          <line x1="10" y1="12" x2="21" y2="12"/>
+          <line x1="10" y1="18" x2="21" y2="18"/>
+        </svg>
+        Transactions
+      </a>
+      <a href="notifications.html" class="nav-item">
+        <svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.7 21a2 2 0 0 1-3.4 0"/>
+        </svg>
+        Notifications
+      </a>
+    </nav>
+  </aside>
+
+  <div class="main-wrap" id="mainWrap">
+    <header class="topbar">
+      <div class="tb-left">
+        <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2148C0" stroke-width="2.8" stroke-linecap="round">
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+        <img src="../assets/logo.png" alt="Logo" class="tb-logo" />
+        <div class="tb-title-wrap">
+          <h1 class="tb-title">Orders</h1>
+          <p class="tb-sub">Manage and track all customer orders</p>
+        </div>
+      </div>
+      <div class="tb-right">
+        <button class="icon-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+        </button>
+        <div class="user-pill" id="userPill">
+          <div class="avatar-box">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2148C0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+          </div>
+          <div class="user-info">
+            <span class="u-name" id="uName">Operator</span>
+            <span class="u-role">Operator</span>
+          </div>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <div class="u-dropdown" id="uDropdown">
+            <button class="dd-logout" id="logoutBtn">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+              Logout
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="content">
+      <div class="card">
+        <div class="actions-bar">
+          <div class="actions-left">
+            <span class="act-label">Top Actions</span>
+            <div class="orders-search">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.5" stroke-linecap="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input type="text" id="searchInput" placeholder="Search by name or phone number" />
+            </div>
+          </div>
+          <div class="actions-mid">
+            <span class="act-label">Filter</span>
+            <div class="custom-select">
+              <div class="cs-display" id="csDisplay">
+                <span id="csText">All</span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </div>
+              <div class="cs-dropdown" id="csDropdown">
+                <div class="cs-opt active" data-val="">All</div>
+                <div class="cs-opt" data-val="on_process">On Process</div>
+                <div class="cs-opt" data-val="completed">Completed</div>
+                <div class="cs-opt" data-val="pending">Pending</div>
+              </div>
+            </div>
+          </div>
+          <div class="actions-right">
+            <button class="btn-create" id="btnCreate">+ Create New Order</button>
+          </div>
+        </div>
+
+        <h2 class="section-h">Orders Table</h2>
+        <div class="orders-tbl-wrap">
+          <table class="orders-tbl">
+            <thead>
+              <tr>
+                <th>Customer Name</th><th>Phone Number</th><th>Service</th>
+                <th>Item Type</th><th>Order Status</th><th>Payment Status</th>
+                <th>Date</th><th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="tblBody">
+              <tr><td colspan="8" style="text-align:center;padding:32px;color:#6B7280;">Memuat data order...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pagination-row">
+          <div class="pg-nav">
+            <button class="pg-arr" id="pgPrev">&#8249;</button>
+            <span id="pgLabel">Page 1 of 1</span>
+            <button class="pg-arr" id="pgNext">&#8250;</button>
+          </div>
+          <div class="pg-btns">
+            <button class="btn-outline" id="btnNextPg">Next</button>
+            <button class="btn-outline" id="btnPrevPg">Previous</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

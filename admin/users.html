@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Bedjo Cleaner – Users</title>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="../css/admin-dashboard.css" />
+  <link rel="stylesheet" href="../css/admin-users.css" />
+
+  <!-- FONT -->
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+
+  <!-- ICON -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+</head>
+
+<body>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+
+    <div class="sidebar-logo">
+      <img src="../assets/logo.png" alt="Bedjo Cleaner" class="logo-img"/>
+      <span class="logo-text">Bedjo Cleaner</span>
+    </div>
+
+    <nav class="sidebar-nav">
+
+      <a href="admin-dashboard.html" class="nav-item" id="nav-dashboard">
+        <i class="fa-solid fa-house"></i>
+        <span>Dashboard</span>
+      </a>
+
+      <a href="users.html" class="nav-item active" id="nav-users">
+        <i class="fa-solid fa-users"></i>
+        <span>Users</span>
+      </a>
+
+    </nav>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-wrapper" id="mainWrapper">
+
+    <!-- TOPBAR -->
+    <header class="topbar">
+
+      <div class="topbar-left">
+
+        <button class="hamburger" id="hamburgerBtn">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+
+        <h1 class="page-title" id="pageTitle">
+          Users
+        </h1>
+
+      </div>
+
+      <div class="topbar-right">
+
+        <div class="user-info" id="userDropdownToggle">
+
+          <!-- BARU — rectangle box kayak operator -->
+         <div class="user-avatar-box">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2148C0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+    <circle cx="12" cy="7" r="4"/>
+  </svg>
+</div>
+
+          <div class="user-text">
+            <span class="user-name" id="topbarName">Admin</span>
+            <span class="user-role" id="topbarRole">Admin</span>
+          </div>
+
+          <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
+
+        </div>
+
+        <!-- DROPDOWN -->
+        <div class="dropdown-menu" id="userDropdown">
+          <a href="#" id="logoutBtn">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            Logout
+          </a>
+        </div>
+
+      </div>
+
+    </header>
+
+    <!-- CONTENT -->
+    <main class="content">
+
+      <div class="card table-card">
+
+        <!-- HEADER -->
+        <div class="users-header">
+
+          <h2 class="card-title">
+            User Management
+          </h2>
+
+        </div>
+
+        <!-- FILTER -->
+        <div class="filters-row">
+
+          <div class="search-wrap">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+
+            <input
+              type="text"
+              class="search-input"
+              id="searchInput"
+              placeholder="Search users..."
+            />
+          </div>
+
+          <select class="filter-select" id="filterRole">
+            <option value="">All Role</option>
+            <option value="admin">Admin</option>
+            <option value="operator">Operator</option>
+          </select>
+
+          <select class="filter-select" id="filterStatus">
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+
+        </div>
+
+        <!-- TABLE -->
+        <div class="table-wrapper">
+
+          <table class="user-table" id="userTable">
+
+            <thead>
+              <tr>
+                <th>User ID</th>
+                <th>Full Name</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Branch</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+
+            <tbody id="userTableBody">
+              <!-- JS RENDER -->
+            </tbody>
+
+          </table>
+
+        </div>
+
+        <!-- PAGINATION -->
+        <div class="pagination" id="pagination"></div>
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- =======================================
+       EDIT USER MODAL
+  ======================================== -->
+
+  <div class="modal-overlay" id="editModal">
+
+    <div class="modal">
+
+      <h3 class="modal-title">
+        Edit User
+      </h3>
+
+      <input type="hidden" id="editIndex"/>
+
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="editFullName" class="form-input"/>
+      </div>
+
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="editUsername" class="form-input"/>
+      </div>
+
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="editEmail" class="form-input"/>
+      </div>
+
+      <div class="form-row">
+
+        <div class="form-group">
+
+          <label>Role</label>
+
+          <select id="editRole" class="form-input">
+            <option value="admin">Admin</option>
+            <option value="operator">Operator</option>
+          </select>
+
+        </div>
+
+        <div class="form-group">
+          <label>Branch</label>
+          <select id="editBranch" class="form-input">
+            <option value="">Choose branch</option>
+          </select>
+        </div>
+
+      </div>
+
+      <div class="form-group">
+
+        <label>Status</label>
+
+        <select id="editStatus" class="form-input">
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+
+      </div>
+
+      <div class="modal-actions">
+
+        <button class="btn-cancel" id="cancelEdit">
+          Cancel
+        </button>
+
+        <button class="btn-submit" id="saveEdit">
+          Save
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- JAVASCRIPT -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/supabase.js?v=20260527-1"></script>
+  <script src="../js/auth-guard.js?v=20260527-1"></script>
+  <script src="../js/admin-users.js?v=20260527-1"></script>
+
+</body>
+</html>

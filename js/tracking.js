@@ -1,0 +1,292 @@
+const STATUS_CONFIG = {
+  pending: { label: "Received", badgeClass: "badge-pending" },
+  received: { label: "Received", badgeClass: "badge-pending" },
+  on_process: { label: "Processing", badgeClass: "badge-process" },
+  processing: { label: "Processing", badgeClass: "badge-process" },
+  process: { label: "Processing", badgeClass: "badge-process" },
+  completed: { label: "Completed", badgeClass: "badge-completed" },
+  cancelled: { label: "Dibatalkan", badgeClass: "badge-cancelled" },
+};
+
+const TIMELINE_STEPS = [
+  { key: "received", label: "Received" },
+  { key: "processing", label: "Processing" },
+  { key: "completed", label: "Completed" },
+];
+
+const STATUS_STEP_INDEX = {
+  pending: 0,
+  received: 0,
+  on_process: 1,
+  processing: 1,
+  process: 1,
+  completed: 2,
+  cancelled: -1
+};
+
+const loadingEl = document.getElementById("loading-state");
+const errorEl = document.getElementById("error-state");
+const orderCardEl = document.getElementById("order-card");
+const helpCardEl = document.getElementById("help-card");
+const formEl = document.getElementById("tracking-form");
+const inputEl = document.getElementById("tracking-input");
+
+document.addEventListener("DOMContentLoaded", () => {
+  const params = new URLSearchParams(window.location.search);
+  const code = normalizeTrackingCode(params.get("code") || params.get("order_id") || params.get("id"));
+
+  if (code) {
+    if (inputEl) inputEl.value = code;
+    loadOrder(code);
+  }
+
+  formEl?.addEventListener("submit", event => {
+    event.preventDefault();
+    const value = normalizeTrackingCode(inputEl?.value);
+    if (!value) {
+      showError();
+      return;
+    }
+    loadOrder(value);
+  });
+});
+
+async function loadOrder(value) {
+  showLoading();
+
+  const orderCode = normalizeTrackingCode(value);
+  if (!orderCode) {
+    showError();
+    return;
+  }
+
+  const { data: order, error } = await supabaseClient
+    .from("orders")
+    .select(`
+      id,
+      order_code,
+      customer_name,
+      customer_phone,
+      status,
+      branch_id,
+      created_at,
+      branches (
+        name
+      ),
+      order_items (
+        id,
+        item_type,
+        color,
+        notes,
+        quantity,
+        price,
+        subtotal,
+        services (
+          name,
+          price,
+          category
+        )
+      ),
+      payments (
+        method,
+        amount,
+        paid_amount,
+        status
+      )
+    `)
+    .eq("order_code", orderCode)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Tracking fetch error:", error);
+    showError();
+    return;
+  }
+
+  if (!order) {
+    showError();
+    return;
+  }
+
+  order.order_photos = await fetchOrderPhotos(order.id);
+  renderOrder(order);
+}
+
+function renderOrder(order) {
+  const name = order.customer_name || "Customer";
+  const statusKey = normalizeStatus(order.status);
+  const statusCfg = STATUS_CONFIG[statusKey] || STATUS_CONFIG.pending;
+  const payment = order.payments?.[0] || null;
+
+  setText("avatar-initials", name.charAt(0).toUpperCase());
+  setText("customer-name", name);
+  setText("order-id", `Order ID: #${order.order_code || order.id}`);
+  setText("order-date", formatDate(order.created_at));
+  setText("customer-phone", order.customer_phone || "-");
+  setText("service-type", serviceNames(order));
+  setText("item-type", itemTypes(order));
+  setText("payment-status", paymentStatusText(payment));
+  setText("order-note", notes(order));
+
+  const badge = document.getElementById("status-badge");
+  if (badge) {
+    badge.textContent = statusCfg.label;
+    badge.className = `status-badge ${statusCfg.badgeClass}`;
+  }
+
+  renderPhoto(order);
+  renderTimeline(statusKey);
+
+  const waNumber = window.BedjoContact?.whatsappNumber?.() || "";
+  const waMsg = encodeURIComponent(`Halo Bedjo Cleaner, saya ingin menanyakan status order #${order.order_code || order.id} atas nama ${name}.`);
+  const waLink = document.getElementById("wa-link");
+  if (waLink) waLink.href = waNumber
+    ? `https://wa.me/${waNumber}?text=${waMsg}`
+    : `https://wa.me/?text=${waMsg}`;
+
+  loadingEl?.classList.add("hidden");
+  errorEl?.classList.add("hidden");
+  orderCardEl?.classList.remove("hidden");
+  helpCardEl?.classList.remove("hidden");
+}
+
+async function fetchOrderPhotos(orderId) {
+  if (!orderId) return [];
+  try {
+    const { data, error } = await supabaseClient
+      .from("order_photos")
+      .select("photo_url, file_path, created_at")
+      .eq("order_id", orderId)
+      .order("created_at", { ascending: true });
+    if (error) {
+      console.warn("Tracking order_photos fetch error:", error);
+      return [];
+    }
+    return data || [];
+  } catch (error) {
+    console.warn("Tracking order_photos fetch error:", error);
+    return [];
+  }
+}
+
+function renderPhoto(order) {
+  const img = document.getElementById("item-photo");
+  const noPhoto = document.getElementById("no-photo");
+  const photoUrl = order.order_photos?.[0]?.photo_url || "";
+
+  if (img && photoUrl) {
+    img.src = photoUrl;
+    img.classList.remove("hidden");
+    noPhoto?.classList.add("hidden");
+    return;
+  }
+
+  img?.classList.add("hidden");
+  noPhoto?.classList.remove("hidden");
+}
+
+function renderTimeline(statusKey) {
+  const container = document.getElementById("timeline");
+  if (!container) return;
+  container.innerHTML = "";
+  const activeIndex = STATUS_STEP_INDEX[statusKey] ?? 0;
+
+  if (statusKey === "cancelled") {
+    container.innerHTML = `
+      <div class="timeline-item">
+        <div class="timeline-left"><div class="timeline-dot done" style="background:#b91c1c;border-color:#b91c1c;">x</div></div>
+        <div class="timeline-right"><p class="timeline-label done">Order dibatalkan</p></div>
+      </div>
+    `;
+    return;
+  }
+
+  TIMELINE_STEPS.forEach((step, idx) => {
+    const isDone = idx < activeIndex;
+    const isActive = idx === activeIndex;
+    const isLast = idx === TIMELINE_STEPS.length - 1;
+    const item = document.createElement("div");
+    item.className = "timeline-item";
+    item.innerHTML = `
+      <div class="timeline-left">
+        <div class="timeline-dot ${isDone ? "done" : isActive ? "active" : ""}">${isDone ? "&#10003;" : ""}</div>
+        ${!isLast ? `<div class="timeline-line ${isDone ? "done" : ""}"></div>` : ""}
+      </div>
+      <div class="timeline-right">
+        <p class="timeline-label ${isDone ? "done" : isActive ? "active" : ""}">${step.label}</p>
+      </div>
+    `;
+    container.appendChild(item);
+  });
+}
+
+function showLoading() {
+  loadingEl?.classList.remove("hidden");
+  errorEl?.classList.add("hidden");
+  orderCardEl?.classList.add("hidden");
+}
+
+function showError() {
+  loadingEl?.classList.add("hidden");
+  orderCardEl?.classList.add("hidden");
+  errorEl?.classList.remove("hidden");
+  helpCardEl?.classList.remove("hidden");
+}
+
+function serviceNames(order) {
+  const names = (order.order_items || []).map(item => item.services?.name || item.service_type || item.service_name || serviceFromNotes(item.notes)).filter(Boolean);
+  return [...new Set(names)].join(", ") || "-";
+}
+
+function itemTypes(order) {
+  const names = (order.order_items || []).map(item => item.item_type).filter(Boolean);
+  return [...new Set(names)].join(", ") || "-";
+}
+
+function notes(order) {
+  return (order.order_items || []).map(item => stripServiceFromNotes(item.notes)).filter(Boolean).join(", ") || "-";
+}
+
+function serviceFromNotes(note) {
+  return String(note || "").match(/^\[service_type:([^\]]+)\]/i)?.[1]?.trim() || "";
+}
+
+function stripServiceFromNotes(note) {
+  return String(note || "").replace(/^\[service_type:[^\]]+\]\s*/i, "").trim();
+}
+
+function paymentStatusText(payment) {
+  if (!payment) return "-";
+  const status = normalizeStatus(payment.status);
+  if (status === "paid") return "Paid";
+  if (status === "partial") return "Partial";
+  if (status === "unpaid") return "Unpaid";
+  const total = Number(payment.amount || 0);
+  const paid = Number(payment.paid_amount || 0);
+  if (total > 0 && paid >= total) return "Paid";
+  if (paid > 0) return "Partial";
+  return "Unpaid";
+}
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value || "-";
+}
+
+function normalizeStatus(status) {
+  return String(status || "pending").toLowerCase().replaceAll(" ", "_").replaceAll("-", "_");
+}
+
+function normalizeTrackingCode(value) {
+  return String(value || "")
+    .trim()
+    .replace(/^order\s*(id|code)?\s*:?\s*#?/i, "")
+    .replace(/^#/, "")
+    .trim()
+    .toUpperCase();
+}
+
+function formatDate(isoString) {
+  if (!isoString) return "-";
+  return new Date(isoString).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+}

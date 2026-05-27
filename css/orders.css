@@ -1,0 +1,253 @@
+/* ============================================================
+   css/orders.css  —  Bedjo Cleaner
+   CATATAN: File ini dipakai BERSAMA operator-dashboard.css
+   Semua class di sini TIDAK boleh konflik dengan class di sana
+   ============================================================ */
+
+/* Topbar subtitle */
+.tb-title-wrap { display: flex; flex-direction: column; line-height: 1.2; }
+.tb-sub { font-size: 0.82rem; color: var(--muted); font-weight: 400; margin-top: 1px; }
+
+/* ── Actions bar ── */
+.actions-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.actions-left  { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 220px; }
+.actions-mid   { display: flex; flex-direction: column; gap: 6px; }
+.actions-right { display: flex; align-items: flex-end; margin-left: auto; }
+
+.act-label {
+  font-size: 0.88rem;
+  font-weight: 900;
+  color: var(--dark);
+}
+
+/* Search box (orders page) */
+.orders-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 0 14px;
+  height: 42px;
+  background: #fff;
+  min-width: 280px;
+}
+.orders-search input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-family: 'Lato', sans-serif;
+  font-size: 0.9rem;
+  color: var(--muted);
+  background: transparent;
+}
+
+/* ── Custom filter select ── */
+.custom-select { position: relative; }
+
+.cs-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 0 14px;
+  height: 42px;
+  min-width: 160px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--dark);
+  user-select: none;
+  transition: border-color .15s;
+}
+.cs-display:hover { border-color: var(--blue); }
+
+.cs-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 100%;
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.10);
+  z-index: 100;
+  overflow: hidden;
+}
+.cs-dropdown.open { display: block; }
+
+.cs-opt {
+  padding: 10px 16px;
+  font-size: 0.9rem;
+  color: var(--dark);
+  cursor: pointer;
+  transition: background .12s;
+}
+.cs-opt:hover  { background: var(--blue-light); color: var(--blue); }
+.cs-opt.active { background: var(--blue-light); color: var(--blue); font-weight: 700; }
+
+/* ── Section heading ── */
+.section-h {
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: var(--dark);
+  margin-bottom: 14px;
+}
+
+/* ── Orders table (override tbl dari operator-dashboard jika perlu) ── */
+.orders-tbl-wrap { overflow-x: auto; }
+
+.orders-tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.orders-tbl thead tr { background: var(--blue-light); }
+.orders-tbl th {
+  padding: 11px 16px;
+  text-align: left;
+  font-weight: 900;
+  font-size: 0.87rem;
+  white-space: nowrap;
+  color: var(--dark);
+}
+.orders-tbl td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--dark);
+  font-size: 0.9rem;
+}
+.orders-tbl tbody tr:last-child td { border-bottom: none; }
+.orders-tbl tbody tr:hover { background: #F9FAFB; }
+
+/* Status badges */
+.badge {
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: .03em;
+  white-space: nowrap;
+}
+.badge-on  { border: 1.5px solid #2148C0; color: #2148C0; }
+.badge-ok  { border: 1.5px solid #16A34A; color: #16A34A; }
+.badge-pnd { border: 1.5px solid #9CA3AF; color: #9CA3AF; }
+
+/* Action buttons */
+.act-btns { display: flex; align-items: center; gap: 12px; }
+.act-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6B7280;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: 6px;
+  transition: color .15s, background .15s;
+}
+.act-btn:hover { color: #2148C0; background: #E8EEFF; }
+
+/* ── Pagination ── */
+.pagination-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.pg-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  color: var(--dark);
+  font-weight: 700;
+}
+
+.pg-arr {
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  color: #6B7280;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+  line-height: 1;
+  transition: background .12s, color .12s;
+}
+.pg-arr:hover:not(:disabled) { background: #E8EEFF; color: #2148C0; }
+.pg-arr:disabled { opacity: .35; cursor: default; }
+
+.pg-btns { display: flex; gap: 8px; }
+
+.btn-outline {
+  height: 36px;
+  padding: 0 18px;
+  border: 1.5px solid #E5E7EB;
+  border-radius: 8px;
+  background: #fff;
+  font-family: 'Lato', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #111827;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.btn-outline:hover:not(:disabled) { background: #E8EEFF; border-color: #2148C0; color: #2148C0; }
+.btn-outline:disabled { opacity: .35; cursor: default; }
+
+/* ── Create button (orders page) ── */
+.btn-create {
+  height: 42px;
+  padding: 0 22px;
+  background: #2148C0;
+  color: #fff;
+  font-family: 'Lato', sans-serif;
+  font-size: 0.93rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 3px 12px rgba(33,72,192,.22);
+  transition: background .18s;
+}
+.btn-create:hover { background: #1a3aa0; }
+
+@media (max-width: 768px) {
+  .actions-bar { flex-direction: column; align-items: stretch; }
+  .actions-right { margin-left: 0; }
+  .orders-search { min-width: unset; }
+}
+
+/* Logo PNG di drawer */
+.drawer-logo-img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;  /* jaga proporsi, tidak stretch */
+  flex-shrink: 0;
+}
+
+/* Logo PNG di topbar */
+.tb-logo {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  flex-shrink: 0;
+  display: block;
+}

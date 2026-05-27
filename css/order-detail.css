@@ -1,0 +1,284 @@
+/* ============================================================
+   css/order-detail.css  —  Bedjo Cleaner
+   ============================================================ */
+
+/* ── Topbar heading ── */
+.page-heading   { display: flex; flex-direction: column; gap: 1px; }
+.breadcrumb     { font-size: 0.78rem; color: var(--muted); }
+.breadcrumb-link{ color: var(--muted); text-decoration: none; }
+.breadcrumb-link:hover { color: var(--blue); text-decoration: underline; }
+
+.heading-row    { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tb-title       { font-size: 1.3rem; font-weight: 900; color: var(--dark); }
+.heading-divider{ font-size: 1.3rem; color: var(--border); font-weight: 300; }
+.heading-order-id{ font-size: 1.1rem; font-weight: 700; color: var(--dark); }
+
+/* Status badge in heading */
+.heading-badge {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  border: 1.5px solid var(--blue);
+  color: var(--blue);
+}
+.heading-badge.ok  { border-color: #16A34A; color: #16A34A; }
+.heading-badge.pnd { border-color: #9CA3AF; color: #9CA3AF; }
+
+/* ── 4-col grid ── */
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 260px;
+  gap: 16px;
+  align-items: start;
+  margin-bottom: 16px;
+}
+
+.det-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Generic detail card ── */
+.det-card {
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(33,72,192,.05);
+  padding: 20px 22px;
+}
+
+.det-card-title {
+  font-size: 1rem;
+  font-weight: 900;
+  color: var(--dark);
+  margin-bottom: 16px;
+}
+
+/* ── Info list ── */
+.info-list  { display: flex; flex-direction: column; }
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+.info-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+
+.info-lbl  { font-size: 0.82rem; font-weight: 700; color: var(--dark); }
+.info-val  { font-size: 0.88rem; color: var(--muted); }
+
+/* ── Item list (ol) ── */
+.item-ol {
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.item-ol-li {
+  font-size: 0.9rem;
+  color: var(--dark);
+  line-height: 1.4;
+}
+
+/* ── Photos ── */
+.photos-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  min-height: 10px;
+}
+
+.photo-thumb {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  cursor: pointer;
+  transition: opacity .15s;
+}
+.photo-thumb:hover { opacity: .85; }
+
+.btn-add-photo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 16px;
+  background: var(--blue);
+  color: #fff;
+  font-family: 'Lato', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background .15s;
+  float: right;
+}
+.btn-add-photo:hover { background: var(--blue-hover); }
+
+/* ── QR col ── */
+.qr-det-card  { text-align: center; }
+
+.qr-det-wrap {
+  width: 160px;
+  height: 160px;
+  margin: 0 auto 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.qr-det-wrap canvas,
+.qr-det-wrap img { width: 160px !important; height: 160px !important; display: block; }
+
+.qr-det-label { font-size: 0.93rem; font-weight: 900; color: var(--dark); margin-bottom: 3px; }
+.qr-det-sub   { font-size: 0.82rem; color: var(--muted); margin-bottom: 12px; }
+
+.btn-dl-det {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  width: 100%; height: 40px;
+  background: var(--blue); color: #fff;
+  font-family: 'Lato', sans-serif; font-size: 0.88rem; font-weight: 700;
+  border: none; border-radius: 999px; cursor: pointer; margin-bottom: 8px;
+  transition: background .15s;
+}
+.btn-dl-det:hover { background: var(--blue-hover); }
+
+.btn-wa-det {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  width: 100%; height: 40px;
+  background: #16A34A; color: #fff;
+  font-family: 'Lato', sans-serif; font-size: 0.88rem; font-weight: 700;
+  border: none; border-radius: 999px; cursor: pointer;
+  transition: background .15s;
+}
+.btn-wa-det:hover { background: #15803D; }
+
+/* ── Tracking shortcut ── */
+.tracking-det-title { font-size: 0.93rem; font-weight: 900; color: var(--dark); margin-bottom: 3px; }
+.tracking-det-sub   { font-size: 0.82rem; color: var(--muted); margin-bottom: 10px; }
+
+.tracking-det-row {
+  display: flex; align-items: center; gap: 6px;
+  background: #F3F4F6; border-radius: 8px; padding: 7px 10px;
+}
+.tracking-det-url {
+  flex: 1; font-size: 0.78rem; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.btn-copy-det {
+  flex-shrink: 0; height: 28px; padding: 0 12px;
+  background: var(--dark); color: #fff;
+  font-family: 'Lato', sans-serif; font-size: 0.78rem; font-weight: 700;
+  border: none; border-radius: 6px; cursor: pointer; transition: background .15s;
+}
+.btn-copy-det:hover { background: #374151; }
+
+/* ── Status Update ── */
+.status-card { margin-bottom: 0; }
+
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.status-sel {
+  height: 44px;
+  min-width: 220px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 0 16px;
+  font-family: 'Lato', sans-serif;
+  font-size: 0.93rem;
+  color: var(--muted);
+  background: #fff;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.5' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px;
+  transition: border-color .15s;
+}
+.status-sel:focus { border-color: var(--blue); }
+
+.btn-update-status {
+  height: 44px;
+  padding: 0 32px;
+  background: var(--blue);
+  color: #fff;
+  font-family: 'Lato', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(33,72,192,.22);
+  transition: background .15s;
+}
+.btn-update-status:hover { background: var(--blue-hover); }
+
+/* ── Toast ── */
+.toast-msg {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #111827;
+  color: #fff;
+  padding: 12px 28px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s, transform .25s;
+  z-index: 9999;
+  white-space: nowrap;
+}
+.toast-msg.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── Responsive ── */
+@media (max-width: 1100px) {
+  .detail-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 640px) {
+  .detail-grid { grid-template-columns: 1fr; }
+  .heading-row { flex-wrap: wrap; }
+}
+
+/* Logo PNG di drawer */
+.drawer-logo-img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;  /* jaga proporsi, tidak stretch */
+  flex-shrink: 0;
+}
+
+/* Logo PNG di topbar */
+.tb-logo {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  flex-shrink: 0;
+  display: block;
+}

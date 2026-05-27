@@ -1,0 +1,220 @@
+/* ============================================================
+   css/order-output.css  —  Bedjo Cleaner
+   Halaman Output QR Order
+   ============================================================ */
+
+.tb-title-wrap { display: flex; flex-direction: column; line-height: 1.2; }
+.tb-sub { font-size: 0.82rem; color: var(--muted); font-weight: 400; margin-top: 1px; }
+
+/* Brand di pojok kanan topbar */
+.topbar-brand-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 8px;
+}
+.topbar-brand-name {
+  font-size: 1rem;
+  font-weight: 900;
+  color: var(--blue);
+}
+
+/* ── Output content layout ── */
+.output-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding-top: 32px;
+  padding-bottom: 40px;
+}
+
+/* ── QR output card ── */
+.qr-output-card {
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 2px 20px rgba(33,72,192,0.07);
+  padding: 32px 40px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  max-width: 340px;
+}
+
+/* QR code container (qrcode.js renders a canvas or img inside here) */
+#qrCodeContainer {
+  width: 180px;
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+#qrCodeContainer canvas,
+#qrCodeContainer img {
+  width: 180px !important;
+  height: 180px !important;
+  display: block;
+}
+
+.qr-pickup-label {
+  font-size: 1rem;
+  font-weight: 900;
+  color: var(--dark);
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.qr-order-id {
+  font-size: 0.88rem;
+  color: var(--muted);
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+/* Download QR button */
+.btn-dl-qr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 44px;
+  background: var(--blue);
+  color: #fff;
+  font-family: 'Lato', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  margin-bottom: 10px;
+  box-shadow: 0 3px 12px rgba(33,72,192,.22);
+  transition: background .18s;
+}
+.btn-dl-qr:hover { background: var(--blue-hover); }
+
+/* WhatsApp button */
+.btn-wa {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 44px;
+  background: #16A34A;
+  color: #fff;
+  font-family: 'Lato', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background .18s;
+}
+.btn-wa:hover { background: #15803D; }
+
+/* ── Tracking shortcut card ── */
+.tracking-output-card {
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(33,72,192,0.06);
+  padding: 20px 24px;
+  width: 100%;
+  max-width: 340px;
+}
+
+.tracking-card-title {
+  font-size: 0.97rem;
+  font-weight: 900;
+  color: var(--dark);
+  margin-bottom: 4px;
+}
+
+.tracking-card-sub {
+  font-size: 0.84rem;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.tracking-link-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #F3F4F6;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.tracking-url {
+  flex: 1;
+  font-size: 0.82rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-copy {
+  flex-shrink: 0;
+  height: 30px;
+  padding: 0 14px;
+  background: var(--dark);
+  color: #fff;
+  font-family: 'Lato', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background .15s;
+}
+.btn-copy:hover { background: #374151; }
+
+/* ── Back to Dashboard ── */
+.output-footer {
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-back {
+  height: 42px;
+  padding: 0 24px;
+  background: var(--blue);
+  color: #fff;
+  font-family: 'Lato', sans-serif;
+  font-size: 0.93rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(33,72,192,.22);
+  transition: background .18s;
+}
+.btn-back:hover { background: var(--blue-hover); }
+
+/* Logo PNG di drawer */
+.drawer-logo-img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;  /* jaga proporsi, tidak stretch */
+  flex-shrink: 0;
+}
+
+/* Logo PNG di topbar */
+.tb-logo {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  flex-shrink: 0;
+  display: block;
+}

@@ -1,0 +1,209 @@
+/* ── Users Page Specific Styles ──────────────── */
+
+.users-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* ── Filters ─────────────────────────────────── */
+.filters-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 180px;
+  max-width: 280px;
+  display: flex;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 13px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.search-input {
+  width: 100%;
+  height: 38px;
+  box-sizing: border-box;
+  padding: 0 12px 0 34px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-family: 'Lato', sans-serif;
+  color: #334155;
+  background: #fff;
+  cursor: text;
+  outline: none;
+  transition: border 0.2s;
+}
+.search-input:focus { border-color: #2148C0; }
+
+.filter-select {
+  height: 38px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-family: 'Lato', sans-serif;
+  color: #334155;
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+  transition: border 0.2s;
+  min-width: 110px;
+}
+.filter-select:focus { border-color: #2148C0; }
+
+/* ── Status Dot ──────────────────────────────── */
+.status-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.83rem;
+  color: #334155;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot-active   { background: #22c55e; }
+.dot-inactive { background: #94a3b8; }
+
+/* ── Pagination ──────────────────────────────── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 18px;
+}
+
+.pg-btn {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #64748b;
+  font-size: 0.8rem;
+  transition: all 0.2s;
+}
+.pg-btn:hover:not(:disabled) { background: #2148C0; color: #fff; border-color: #2148C0; }
+.pg-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.pg-info {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #2148C0;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* ── Form Row (side by side) ─────────────────── */
+.form-row {
+  display: flex;
+  gap: 12px;
+}
+.form-row .form-group { flex: 1; }
+
+/* ── Responsive ──────────────────────────────── */
+@media (max-width: 600px) {
+  .filters-row { flex-direction: column; align-items: stretch; }
+  .search-wrap { max-width: 100%; }
+  .form-row { flex-direction: column; gap: 0; }
+  .users-header { flex-direction: column; align-items: flex-start; }
+}
+
+/* ── Action Dots Dropdown ────────────────────── */
+.action-menu-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.btn-action-dots {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: #64748b;
+  font-size: 1rem;
+  transition: background 0.2s;
+}
+.btn-action-dots:hover {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.action-dropdown {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 110%;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  z-index: 100;
+  min-width: 120px;
+  overflow: hidden;
+}
+.action-dropdown.open {
+  display: block;
+}
+
+.action-dropdown button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 14px;
+  background: none;
+  border: none;
+  font-family: 'Lato', sans-serif;
+  font-size: 0.83rem;
+  color: #334155;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.action-dropdown button:hover {
+  background: #f8fafc;
+}
+.action-dropdown button.delete {
+  color: #ef4444;
+}
+.action-dropdown button.delete:hover {
+  background: #fef2f2;
+}

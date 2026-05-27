@@ -1,0 +1,226 @@
+/* =============================================
+   css/auth.css  —  Bedjo Cleaner Management System
+   ============================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap');
+
+/* ---------- Variables ---------- */
+:root {
+  --blue:        #2148C0;
+  --blue-hover:  #1a3aa0;
+  --bg-left:     #D9E0F5;
+  --bg-right:    #EEF0F8;
+  --card-bg:     #FFFFFF;
+  --text-dark:   #111827;
+  --text-muted:  #6B7280;
+  --border:      #C8CEDF;
+  --error:       #DC2626;
+  --radius-card: 18px;
+  --radius-pill: 999px;
+  --shadow-card: 0 8px 40px rgba(33,72,192,0.12);
+}
+
+/* ---------- Reset ---------- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: 'Lato', sans-serif;
+}
+
+/* =============================================
+   SPLIT LAYOUT
+   ============================================= */
+.split-layout {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* ── Left panel ── */
+.brand-panel {
+  width: 48%;
+  flex-shrink: 0;
+  background-color: var(--bg-left);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 40px;
+}
+
+.brand-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  text-align: center;
+}
+
+.logo-wrapper {
+  width: 240px;
+  height: 240px;
+  flex-shrink: 0;
+}
+
+.logo-wrapper svg {
+  display: block;
+  width: 240px;
+  height: 240px;
+}
+
+.brand-title {
+  font-size: 1.65rem;
+  font-weight: 900;
+  color: var(--text-dark);
+  line-height: 1.35;
+}
+
+/* ── Right panel ── */
+.form-panel {
+  flex: 1;
+  background-color: var(--bg-right);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 32px;
+}
+
+/* =============================================
+   LOGIN CARD
+   ============================================= */
+.login-card {
+  background: var(--card-bg);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 44px 42px;
+  width: 100%;
+  max-width: 390px;
+}
+
+.card-title {
+  font-size: 1.9rem;
+  font-weight: 900;
+  color: var(--text-dark);
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.card-sub {
+  font-size: 1rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+/* ── Form groups ── */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group:last-of-type {
+  margin-bottom: 26px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-bottom: 8px;
+}
+
+.form-group input {
+  width: 100%;
+  height: 48px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 0 20px;
+  font-size: 0.95rem;
+  font-family: 'Lato', sans-serif;
+  color: var(--text-dark);
+  background: #fff;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+.form-group input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(33,72,192,.12);
+}
+
+.form-group input.invalid {
+  border-color: var(--error);
+}
+
+/* ── Error texts ── */
+.field-error {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--error);
+  margin-top: 4px;
+  min-height: 0;
+}
+
+.login-error {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--error);
+  text-align: center;
+  margin-bottom: 6px;
+  min-height: 0;
+}
+
+/* ── Login button ── */
+.btn-login {
+  display: block;
+  width: 100%;
+  height: 50px;
+  background: var(--blue);
+  color: #fff;
+  font-family: 'Lato', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  border: none;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(33,72,192,.28);
+  transition: background .2s, transform .1s, box-shadow .2s;
+}
+
+.btn-login:hover  { background: var(--blue-hover); box-shadow: 0 6px 22px rgba(33,72,192,.38); }
+.btn-login:active { transform: scale(0.98); }
+.btn-login:disabled { opacity: .6; cursor: not-allowed; }
+
+/* ── Shake animation ── */
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20%      { transform: translateX(-8px); }
+  40%      { transform: translateX(8px); }
+  60%      { transform: translateX(-5px); }
+  80%      { transform: translateX(5px); }
+}
+.login-card.shake { animation: shake .45s ease; }
+
+/* =============================================
+   RESPONSIVE
+   ============================================= */
+@media (max-width: 768px) {
+  .split-layout    { flex-direction: column; }
+  .brand-panel     { width: 100%; padding: 40px 24px 32px; }
+  .logo-wrapper,
+  .logo-wrapper svg,
+  .logo-wrapper img{ width: 180px; height: 180px; }
+  .brand-title     { font-size: 1.3rem; }
+  .form-panel      { padding: 32px 20px 48px; }
+  .login-card      { padding: 34px 26px; max-width: 360px; }
+  .card-title      { font-size: 1.7rem; }
+  .card-sub        { margin-bottom: 24px; }
+}
+
+/* Logo besar di panel kiri login */
+.logo-wrapper img {
+  width: 240px;
+  height: 240px;
+  object-fit: contain;
+}

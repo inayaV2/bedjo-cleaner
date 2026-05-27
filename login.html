@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - Bedjo Cleaner</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/auth.css" />
+
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="js/supabase.js"></script>
+  <script defer src="js/login.js"></script>
+</head>
+<body>
+
+  <div class="split-layout">
+
+    <!-- ========== LEFT PANEL ========== -->
+    <div class="brand-panel">
+      <div class="brand-content">
+
+        <div class="logo-wrapper">
+          <img src="assets/logo.png" alt="Bedjo Cleaner" />
+        </div>
+
+        <h1 class="brand-title">Bedjo Cleaner<br>Management System</h1>
+      </div>
+    </div>
+
+    <!-- ========== RIGHT PANEL ========== -->
+    <div class="form-panel">
+      <div class="login-card">
+        <h2 class="card-title">Welcome Back</h2>
+        <p class="card-sub">Login to your account</p>
+
+        <div class="form-group">
+          <label for="username">Email</label>
+          <input type="text" id="username" autocomplete="username" />
+          <span class="field-error" id="username-error"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" autocomplete="current-password" />
+          <span class="field-error" id="password-error"></span>
+        </div>
+
+        <span class="login-error" id="login-error"></span>
+
+        <button class="btn-login" id="btn-login">Login</button>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>
