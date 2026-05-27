@@ -56,6 +56,7 @@ async function loadOrder(value) {
   showLoading();
 
   const orderCode = normalizeTrackingCode(value);
+  console.log("tracking code:", orderCode);
   if (!orderCode) {
     showError();
     return;
@@ -74,60 +75,25 @@ async function loadOrder(value) {
     return;
   }
 
+  console.log("fetched order:", order);
   console.log("tracking order:", order);
+
+  order.order_items = await fetchOrderItems(order.id);
+  order.payments = await fetchPayments(order.id);
+  order.order_photos = await fetchOrderPhotos(order.id);
+  order.payment_proofs = await fetchPaymentProofs(order.id);
+  console.log("fetched order_items:", order.order_items);
+  console.log("fetched payments:", order.payments);
+  console.log("fetched order_photos:", order.order_photos);
+  console.log("fetched payment_proofs:", order.payment_proofs);
   console.log("tracking order_items:", order.order_items || []);
   console.log("tracking payment:", trackingPayment(order));
 
-  order.order_photos = await fetchOrderPhotos(order.id);
-  order.payment_proofs = await fetchPaymentProofs(order.id);
   subscribeTrackingMedia(order);
   renderOrder(order);
 }
 
 async function fetchTrackingOrder(orderCode) {
-  const full = await supabaseClient
-    .from("orders")
-    .select(`
-      id,
-      order_code,
-      customer_name,
-      customer_phone,
-      status,
-      branch_id,
-      created_at,
-      branches (
-        name
-      ),
-      order_items (
-        id,
-        item_type,
-        service_type,
-        service_name,
-        color,
-        notes,
-        quantity,
-        price,
-        subtotal,
-        services (
-          name,
-          price,
-          category
-        )
-      ),
-      payments (
-        id,
-        method,
-        amount,
-        paid_amount,
-        status
-      )
-    `)
-    .eq("order_code", orderCode)
-    .maybeSingle();
-
-  if (!full.error) return full;
-  console.warn("Tracking relation query failed, retry without services relation:", full.error);
-
   return supabaseClient
     .from("orders")
     .select(`
@@ -137,28 +103,74 @@ async function fetchTrackingOrder(orderCode) {
       customer_phone,
       status,
       branch_id,
-      created_at,
-      order_items (
-        id,
-        item_type,
-        service_type,
-        service_name,
-        color,
-        notes,
-        quantity,
-        price,
-        subtotal
-      ),
-      payments (
-        id,
-        method,
-        amount,
-        paid_amount,
-        status
-      )
+      created_at
     `)
     .eq("order_code", orderCode)
     .maybeSingle();
+}
+
+async function fetchOrderItems(orderId) {
+  if (!orderId) return [];
+  const withServices = await supabaseClient
+    .from("order_items")
+    .select(`
+      id,
+      order_id,
+      item_type,
+      service_type,
+      service_name,
+      color,
+      notes,
+      quantity,
+      price,
+      subtotal,
+      services (
+        name,
+        price,
+        category
+      )
+    `)
+    .eq("order_id", orderId)
+    .order("id", { ascending: true });
+
+  if (!withServices.error) return withServices.data || [];
+  console.warn("Tracking order_items services relation failed, retry simple:", withServices.error);
+
+  const simple = await supabaseClient
+    .from("order_items")
+    .select(`
+      id,
+      order_id,
+      item_type,
+      service_type,
+      service_name,
+      color,
+      notes,
+      quantity,
+      price,
+      subtotal
+    `)
+    .eq("order_id", orderId)
+    .order("id", { ascending: true });
+  if (simple.error) {
+    console.warn("Tracking order_items fetch error:", simple.error);
+    return [];
+  }
+  return simple.data || [];
+}
+
+async function fetchPayments(orderId) {
+  if (!orderId) return [];
+  const { data, error } = await supabaseClient
+    .from("payments")
+    .select("id, order_id, method, amount, paid_amount, status, created_at")
+    .eq("order_id", orderId)
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.warn("Tracking payments fetch error:", error);
+    return [];
+  }
+  return data || [];
 }
 
 function renderOrder(order) {
