@@ -87,20 +87,24 @@ async function loadOrder(value) {
     fetchPaymentProofs(order.id),
   ]);
 
-  order.order_items = orderItems;
-  order.payments = payments;
-  order.order_photos = orderPhotos;
-  order.payment_proofs = paymentProofs;
-  console.log("fetched order_items:", order.order_items);
-  console.log("fetched payments:", order.payments);
-  console.log("fetched order_photos:", order.order_photos);
-  console.log("fetched payment_proofs:", order.payment_proofs);
-  console.log("tracking order_items:", order.order_items || []);
-  console.log("tracking payment:", trackingPayment(order));
+  console.log("fetched order_items:", orderItems);
+  console.log("fetched payments:", payments);
+  console.log("fetched order_photos:", orderPhotos);
+  console.log("fetched payment_proofs:", paymentProofs);
 
   subscribeTrackingMedia(order);
+  renderTracking(order, orderItems, payments, orderPhotos, paymentProofs);
+  requestAnimationFrame(() => renderTracking(order, orderItems, payments, orderPhotos, paymentProofs));
+}
+
+function renderTracking(order, orderItems = [], payments = [], photos = [], proofs = []) {
+  order.order_items = orderItems || [];
+  order.payments = payments || [];
+  order.order_photos = photos || [];
+  order.payment_proofs = proofs || [];
+  console.log("tracking order_items:", order.order_items);
+  console.log("tracking payment:", trackingPayment(order));
   renderOrder(order);
-  requestAnimationFrame(() => renderOrder(order));
 }
 
 async function fetchTrackingOrder(orderCode) {
@@ -196,13 +200,16 @@ function renderOrder(order) {
   setText("order-id", `Order ID: #${order.order_code || order.id}`);
   setText("order-date", formatDate(order.created_at));
   setText("customer-phone", order.customer_phone || "-");
-  setText("service-type", renderedServiceType);
-  setText("item-type", renderedItemType);
-  setText("payment-status", renderedPaymentStatus);
+  setTrackingValue("service-type", "Jenis layanan", renderedServiceType);
+  setTrackingValue("item-type", "Jenis item", renderedItemType);
+  setTrackingValue("payment-status", "Payment status", renderedPaymentStatus);
   setText("order-note", notes(order));
   console.log("rendered service type:", renderedServiceType);
   console.log("rendered item type:", renderedItemType);
   console.log("rendered payment status:", renderedPaymentStatus);
+  console.log("final itemType:", renderedItemType);
+  console.log("final serviceType:", renderedServiceType);
+  console.log("final paymentStatus:", renderedPaymentStatus);
 
   const badge = document.getElementById("status-badge");
   if (badge) {
@@ -419,6 +426,35 @@ function trackingPayment(order) {
 function setText(id, value) {
   const el = document.getElementById(id);
   if (el) el.textContent = value || "-";
+}
+
+function setTrackingValue(id, labelText, value) {
+  setText(id, value);
+  setValueByLabel(labelText, value);
+}
+
+function setValueByLabel(labelText, value) {
+  const normalizedLabel = normalizeLabel(labelText);
+  const labels = [...document.querySelectorAll(".info-label, label, span, p")];
+  const labelEl = labels.find(el => normalizeLabel(el.textContent) === normalizedLabel);
+  if (!labelEl) {
+    console.log("tracking label not found:", labelText);
+    return;
+  }
+
+  const row = labelEl.closest(".info-row") || labelEl.parentElement;
+  const valueEl = row?.querySelector(".info-value");
+  if (valueEl) {
+    valueEl.textContent = value || "-";
+    return;
+  }
+
+  const next = labelEl.nextElementSibling;
+  if (next) next.textContent = value || "-";
+}
+
+function normalizeLabel(value) {
+  return String(value || "").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
 function ensureTrackingDom() {
