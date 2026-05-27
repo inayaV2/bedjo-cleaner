@@ -33,6 +33,7 @@ const inputEl = document.getElementById("tracking-input");
 let trackingPhotosChannel = null;
 
 document.addEventListener("DOMContentLoaded", () => {
+  ensureTrackingDom();
   const params = new URLSearchParams(window.location.search);
   const code = normalizeTrackingCode(params.get("code") || params.get("order_id") || params.get("id"));
 
@@ -78,10 +79,17 @@ async function loadOrder(value) {
   console.log("fetched order:", order);
   console.log("tracking order:", order);
 
-  order.order_items = await fetchOrderItems(order.id);
-  order.payments = await fetchPayments(order.id);
-  order.order_photos = await fetchOrderPhotos(order.id);
-  order.payment_proofs = await fetchPaymentProofs(order.id);
+  const [orderItems, payments, orderPhotos, paymentProofs] = await Promise.all([
+    fetchOrderItems(order.id),
+    fetchPayments(order.id),
+    fetchOrderPhotos(order.id),
+    fetchPaymentProofs(order.id),
+  ]);
+
+  order.order_items = orderItems;
+  order.payments = payments;
+  order.order_photos = orderPhotos;
+  order.payment_proofs = paymentProofs;
   console.log("fetched order_items:", order.order_items);
   console.log("fetched payments:", order.payments);
   console.log("fetched order_photos:", order.order_photos);
@@ -91,6 +99,7 @@ async function loadOrder(value) {
 
   subscribeTrackingMedia(order);
   renderOrder(order);
+  requestAnimationFrame(() => renderOrder(order));
 }
 
 async function fetchTrackingOrder(orderCode) {
@@ -408,6 +417,12 @@ function trackingPayment(order) {
 function setText(id, value) {
   const el = document.getElementById(id);
   if (el) el.textContent = value || "-";
+}
+
+function ensureTrackingDom() {
+  ["service-type", "item-type", "payment-status"].forEach(id => {
+    console.log(`tracking DOM #${id}:`, document.getElementById(id));
+  });
 }
 
 function normalizeStatus(status) {
