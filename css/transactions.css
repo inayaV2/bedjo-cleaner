@@ -10,6 +10,68 @@
   font-weight: 700;
 }
 
+.stats-row {
+  margin-top: 22px;
+  margin-bottom: 26px;
+}
+
+.stat-card {
+  min-height: 88px;
+}
+
+.s-icon svg {
+  display: block;
+}
+
+.s-text {
+  min-width: 0;
+}
+
+.s-label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.s-val {
+  color: var(--dark);
+}
+
+.pagination-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 24px;
+  padding-top: 18px;
+}
+
+.pg-nav {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-weight: 900;
+}
+
+.pg-arr {
+  border: none;
+  background: transparent;
+  color: var(--blue);
+  cursor: pointer;
+  font-size: 1.4rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.pg-btns {
+  display: flex;
+  gap: 10px;
+}
+
+.pg-arr:disabled,
+.btn-outline:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
 /* Filter */
 .transaction-filter-card {
   display: grid;

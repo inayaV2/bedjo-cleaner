@@ -10,12 +10,12 @@
   <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="../css/operator-dashboard.css" />
-  <link rel="stylesheet" href="../css/transactions.css" />
+  <link rel="stylesheet" href="../css/transactions.css?v=20260527-15" />
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script defer src="../js/supabase.js?v=20260527-13"></script>
-  <script defer src="../js/notification-helper.js?v=20260527-13"></script>
-  <script defer src="../js/auth-guard.js?v=20260527-13"></script>
-  <script defer src="../js/transactions.js?v=20260527-13"></script>
+  <script defer src="../js/supabase.js?v=20260527-15"></script>
+  <script defer src="../js/notification-helper.js?v=20260527-15"></script>
+  <script defer src="../js/auth-guard.js?v=20260527-15"></script>
+  <script defer src="../js/transactions.js?v=20260527-15"></script>
 </head>
 <body>
 
@@ -213,6 +213,17 @@
 
           <tbody id="transactionTable"></tbody>
         </table>
+      </div>
+      <div class="pagination-row">
+        <div class="pg-nav">
+          <button class="pg-arr" id="trxPgPrev">&#8249;</button>
+          <span id="trxPgLabel">Page 1 of 1</span>
+          <button class="pg-arr" id="trxPgNext">&#8250;</button>
+        </div>
+        <div class="pg-btns">
+          <button class="btn-outline" id="btnTrxNextPg">Next</button>
+          <button class="btn-outline" id="btnTrxPrevPg">Previous</button>
+        </div>
       </div>
     </div>
 

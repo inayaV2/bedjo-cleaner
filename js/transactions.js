@@ -1,10 +1,15 @@
 const TRANSACTIONS = [];
+const PAGE_SIZE = 7;
 let currentStatusFilter = "all";
 let currentDateFilter = "all";
+let currentPage = 1;
+let filteredTransactions = [];
 
 const tbody = document.getElementById("transactionTable");
 const searchInput = document.getElementById("searchInput");
 const operatorSession = JSON.parse(sessionStorage.getItem("bc_session") || "null");
+
+initSummaryIcons();
 
 if (!operatorSession || operatorSession.role !== "operator") {
   window.location.replace("../login.html");
@@ -84,7 +89,7 @@ function mapPayment(payment) {
 
 function renderSummary(data) {
   const paidRevenue = data
-    .filter(t => t.status === "paid")
+    .filter(t => t.status === "paid" && isToday(t.createdAt))
     .reduce((sum, t) => sum + Number(t.paidAmount || 0), 0);
 
   setText("totalRevenue", formatRupiah(paidRevenue));
@@ -97,10 +102,17 @@ function renderTable(data) {
   if (!tbody) return;
   if (!data.length) {
     renderTableMessage("Belum ada data transaksi");
+    renderPagination();
     return;
   }
 
-  tbody.innerHTML = data.map(t => `
+  const totalPages = Math.max(1, Math.ceil(data.length / PAGE_SIZE));
+  if (currentPage > totalPages) currentPage = totalPages;
+
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageData = data.slice(start, start + PAGE_SIZE);
+
+  tbody.innerHTML = pageData.map(t => `
     <tr>
       <td>${escapeHtml(t.idLabel)}</td>
       <td>${escapeHtml(t.orderCode)}</td>
@@ -118,6 +130,21 @@ function renderTable(data) {
       </td>
     </tr>
   `).join("");
+
+  renderPagination();
+}
+
+function initSummaryIcons() {
+  const icons = [
+    `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`,
+    `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="9"/></svg>`,
+    `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+    `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+  ];
+
+  document.querySelectorAll(".stats-row .s-icon").forEach((icon, index) => {
+    icon.innerHTML = icons[index] || "";
+  });
 }
 
 function renderTableMessage(message) {
@@ -127,7 +154,7 @@ function renderTableMessage(message) {
 
 function applyFilters() {
   const keyword = (searchInput?.value || "").toLowerCase();
-  const filtered = TRANSACTIONS.filter(t => {
+  filteredTransactions = TRANSACTIONS.filter(t => {
     const matchKeyword = !keyword ||
       t.customer.toLowerCase().includes(keyword) ||
       t.phone.toLowerCase().includes(keyword) ||
@@ -137,8 +164,38 @@ function applyFilters() {
     return matchKeyword && matchStatus && matchesDateFilter(t);
   });
 
-  renderSummary(filtered);
-  renderTable(filtered);
+  currentPage = 1;
+  renderSummary(filteredTransactions);
+  renderTable(filteredTransactions);
+}
+
+function renderPagination() {
+  const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / PAGE_SIZE));
+  if (currentPage > totalPages) currentPage = totalPages;
+
+  const label = document.getElementById("trxPgLabel");
+  const prevButtons = [
+    document.getElementById("trxPgPrev"),
+    document.getElementById("btnTrxPrevPg"),
+  ];
+  const nextButtons = [
+    document.getElementById("trxPgNext"),
+    document.getElementById("btnTrxNextPg"),
+  ];
+
+  if (label) label.textContent = `Page ${currentPage} of ${totalPages}`;
+  prevButtons.forEach(btn => {
+    if (btn) btn.disabled = currentPage <= 1;
+  });
+  nextButtons.forEach(btn => {
+    if (btn) btn.disabled = currentPage >= totalPages;
+  });
+}
+
+function changePage(delta) {
+  const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / PAGE_SIZE));
+  currentPage = Math.max(1, Math.min(totalPages, currentPage + delta));
+  renderTable(filteredTransactions);
 }
 
 function matchesDateFilter(transaction) {
@@ -158,7 +215,16 @@ function isSameDay(a, b) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
+function isToday(dateString) {
+  if (!dateString) return false;
+  return isSameDay(new Date(dateString), new Date());
+}
+
 searchInput?.addEventListener("input", applyFilters);
+document.getElementById("trxPgPrev")?.addEventListener("click", () => changePage(-1));
+document.getElementById("trxPgNext")?.addEventListener("click", () => changePage(1));
+document.getElementById("btnTrxPrevPg")?.addEventListener("click", () => changePage(-1));
+document.getElementById("btnTrxNextPg")?.addEventListener("click", () => changePage(1));
 
 document.querySelectorAll("#statusTabs .seg-btn").forEach(btn => {
   btn.addEventListener("click", () => {
