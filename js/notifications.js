@@ -25,7 +25,7 @@ async function loadNotifications() {
     return;
   }
 
-  notifications = data || [];
+  notifications = (data || []).filter(item => !item.hidden);
   renderNotifications();
 }
 
@@ -34,25 +34,20 @@ function renderNotifications() {
   if (!list) return;
 
   if (!notifications.length) {
-    list.innerHTML = `<p style="color:#6B7280;padding:24px;text-align:center;">Belum ada notifikasi.</p>`;
+    list.innerHTML = `<div class="notification-empty">Belum ada notifikasi.</div>`;
     return;
   }
 
   list.innerHTML = notifications.map(item => {
-    const canSendWa = item.type === "order_completed" && item.customer_phone;
     return `
-      <div style="border:1px solid #E5E7EB;border-radius:12px;padding:16px;background:${item.is_read ? "#fff" : "#EEF4FF"};">
-        <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;">
-          <div>
-            <p style="font-weight:900;margin:0 0 6px;">${escapeHtml(item.title || notificationTitle(item.type))}</p>
-            <p style="color:#4B5563;margin:0 0 8px;">${escapeHtml(item.message || "-")}</p>
-            <p style="color:#9CA3AF;font-size:0.82rem;margin:0;">${formatDate(item.created_at)}</p>
-          </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
-            ${!item.is_read ? `<button class="btn-outline" onclick="markAsRead('${item.id}')">Mark read</button>` : ""}
-            ${canSendWa ? `<button class="btn-create" onclick="sendWhatsApp('${item.id}')">Send WhatsApp</button>` : ""}
-          </div>
+      <div class="notification-item">
+        <div class="notification-icon">${notificationIcon(item.type)}</div>
+        <div>
+          <p class="notification-title">${escapeHtml(item.title || notificationTitle(item.type))}</p>
+          <p class="notification-message">${escapeHtml(item.message || "-")}</p>
         </div>
+        <div class="notification-time">${relativeTime(item.created_at)}</div>
+        <div class="notification-dot ${item.is_read ? "read" : ""}" title="${item.is_read ? "Read" : "Unread"}"></div>
       </div>
     `;
   }).join("");
@@ -66,14 +61,35 @@ async function markAsRead(id) {
 }
 
 async function markAllRead() {
-  const { error } = await supabaseClient.from("notifications").update({ is_read: true }).eq("is_read", false);
+  const unreadIds = notifications
+    .filter(item => !item.is_read && item.id)
+    .map(item => item.id);
+
+  if (!unreadIds.length) return;
+
+  const { error } = await supabaseClient
+    .from("notifications")
+    .update({ is_read: true })
+    .in("id", unreadIds);
   if (error) return alert("Gagal mark all read.");
   await loadNotifications();
 }
 
 async function clearAll() {
   if (!confirm("Hapus semua notifikasi?")) return;
-  const { error } = await supabaseClient.from("notifications").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  const ids = notifications
+    .map(item => item.id)
+    .filter(Boolean);
+
+  if (!ids.length) return;
+
+  const hiddenAttempt = await supabaseClient
+    .from("notifications")
+    .update({ hidden: true })
+    .in("id", ids);
+  const { error } = hiddenAttempt.error
+    ? await supabaseClient.from("notifications").delete().in("id", ids)
+    : hiddenAttempt;
   if (error) return alert("Gagal clear all.");
   notifications = [];
   renderNotifications();
@@ -111,6 +127,35 @@ function notificationTitle(type) {
   if (type === "order_completed") return "Order completed";
   if (type === "payment_updated") return "Payment updated";
   return "Order status updated";
+}
+
+function notificationIcon(type) {
+  const normalized = String(type || "").toLowerCase();
+  if (normalized.includes("payment")) return "$";
+  if (normalized.includes("status")) return "✓";
+  if (normalized.includes("completed")) return "✓";
+  if (normalized.includes("order")) return "#";
+  return "i";
+}
+
+function relativeTime(value) {
+  if (!value) return "-";
+  const diff = Date.now() - new Date(value).getTime();
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  if (diff < minute) return "just now";
+  if (diff < hour) {
+    const count = Math.floor(diff / minute);
+    return `${count} minute${count > 1 ? "s" : ""} ago`;
+  }
+  if (diff < day) {
+    const count = Math.floor(diff / hour);
+    return `${count} hour${count > 1 ? "s" : ""} ago`;
+  }
+  const count = Math.floor(diff / day);
+  if (count < 7) return `${count} day${count > 1 ? "s" : ""} ago`;
+  return formatDate(value);
 }
 
 function formatDate(value) {

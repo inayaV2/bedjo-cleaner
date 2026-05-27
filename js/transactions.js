@@ -502,7 +502,7 @@ async function createNotification(payload) {
   try {
     const { error } = await supabaseClient
       .from("notifications")
-      .insert({ ...payload, is_read: false });
+      .insert({ ...payload, is_read: false, created_at: new Date().toISOString() });
     if (error) console.warn("Gagal membuat notification:", error);
   } catch (error) {
     console.warn("Gagal membuat notification:", error);

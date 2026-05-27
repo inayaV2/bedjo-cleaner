@@ -9,11 +9,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/operator-dashboard.css" />
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script defer src="../js/supabase.js"></script>
-  <script defer src="../js/app-config.js?v=20260519-3"></script>
-  <script defer src="../js/auth-guard.js"></script>
+  <script defer src="../js/supabase.js?v=20260527-11"></script>
+  <script defer src="../js/app-config.js?v=20260527-11"></script>
+  <script defer src="../js/auth-guard.js?v=20260527-11"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script defer src="../js/operator-dashboard.js"></script>
+  <script defer src="../js/operator-dashboard.js?v=20260527-11"></script>
 </head>
 <body>
 
@@ -70,7 +70,7 @@
         <h1 class="tb-title">Dashboard</h1>
       </div>
       <div class="tb-right">
-        <button class="icon-btn">
+        <button class="icon-btn" onclick="window.location.href='notifications.html'" aria-label="Notifications">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
             <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
