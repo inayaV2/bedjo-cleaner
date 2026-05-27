@@ -1008,17 +1008,36 @@ function setCustomSelect(dropdownId, textId, value, fallbackLabel) {
 }
 
 async function createNotification(payload) {
+  if (window.BedjoNotification?.createNotification) {
+    return window.BedjoNotification.createNotification(payload);
+  }
+
+  const notificationPayload = {
+    type: payload.type || "order_status_updated",
+    title: payload.title || "Notification",
+    message: payload.message || "",
+    order_id: payload.order_id || null,
+    order_code: payload.order_code || null,
+    customer_name: payload.customer_name || null,
+    customer_phone: payload.customer_phone || null,
+    is_read: false,
+    created_at: new Date().toISOString(),
+  };
+
+  console.log("insert notification payload:", notificationPayload);
+
   try {
-    const { error } = await supabaseClient
+    const result = await supabaseClient
       .from("notifications")
-      .insert({
-        ...payload,
-        is_read: false,
-        created_at: new Date().toISOString(),
-      });
-    if (error) console.warn("Gagal membuat notification:", error);
+      .insert(notificationPayload);
+
+    console.log("insert notification result:", result);
+
+    if (result.error) {
+      console.error("insert notification error:", result.error);
+    }
   } catch (error) {
-    console.warn("Gagal membuat notification:", error);
+    console.error("insert notification exception:", error);
   }
 }
 
