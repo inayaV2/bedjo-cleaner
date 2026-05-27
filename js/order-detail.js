@@ -374,8 +374,10 @@ async function fetchOrderPhotos(id) {
 }
 
 async function uploadOrderPhoto(file) {
-  const id = order?.id || orderId;
+  const id = orderId || order?.id;
   console.log("upload photo orderId:", id);
+  console.log("upload photo URL orderId:", orderId);
+  console.log("upload photo loaded order id:", order?.id);
   console.log("selected file:", file);
   if (!id) {
     const error = new Error("Order ID tidak terbaca dari URL/detail order.");
@@ -407,18 +409,23 @@ async function uploadOrderPhoto(file) {
     console.log("publicUrl:", photoUrl);
     if (!photoUrl) throw new Error("Public URL foto kosong setelah upload Storage.");
 
+    const insertPayload = {
+      order_id: id,
+      photo_url: photoUrl,
+      file_path: filePath,
+    };
+    console.log("insert order_photos payload:", insertPayload);
+
     const insertResult = await supabaseClient
       .from("order_photos")
-      .insert({ order_id: id, photo_url: photoUrl, file_path: filePath })
-      .select("id, order_id, photo_url, file_path")
-      .single();
+      .insert(insertPayload);
     console.log("insert order_photos result/error:", insertResult.data, insertResult.error);
     const insertError = insertResult.error;
     if (insertError) throw insertError;
     return insertResult.data;
   } catch (error) {
     console.error("Upload foto order gagal:", error);
-    alert("Gagal upload foto ke Supabase: " + (error.message || JSON.stringify(error)));
+    alert("Gagal upload foto ke Supabase: " + JSON.stringify(error));
     throw error;
   } finally {
     if (btn) {
