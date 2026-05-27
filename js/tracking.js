@@ -77,6 +77,7 @@ async function loadOrder(value) {
     return;
   }
 
+  console.log("tracking order.id:", order.id);
   console.log("fetched order:", order);
   console.log("tracking order:", order);
 
@@ -181,9 +182,9 @@ function renderOrder(order) {
   const statusKey = normalizeStatus(order.status);
   const statusCfg = STATUS_CONFIG[statusKey] || STATUS_CONFIG.pending;
   const payment = trackingPayment(order);
-  const renderedServiceType = serviceNames(order);
-  const renderedItemType = itemTypes(order);
-  const renderedPaymentStatus = paymentStatusText(payment);
+  const renderedItemType = finalItemType(order.order_items || []);
+  const renderedServiceType = finalServiceType(order.order_items || []);
+  const renderedPaymentStatus = finalPaymentStatus(order, payment);
   console.log("tracking DOM render targets:", {
     serviceTypeEl: document.getElementById("service-type"),
     itemTypeEl: document.getElementById("item-type"),
@@ -200,9 +201,12 @@ function renderOrder(order) {
   setText("order-id", `Order ID: #${order.order_code || order.id}`);
   setText("order-date", formatDate(order.created_at));
   setText("customer-phone", order.customer_phone || "-");
-  setTrackingValue("service-type", "Jenis layanan", renderedServiceType);
-  setTrackingValue("item-type", "Jenis item", renderedItemType);
-  setTrackingValue("payment-status", "Payment status", renderedPaymentStatus);
+  setManyText(["service-type", "serviceType", "iServiceType", "tracking-service-type"], renderedServiceType);
+  setManyText(["item-type", "itemType", "iItemType", "tracking-item-type"], renderedItemType);
+  setManyText(["payment-status", "paymentStatus", "iPaymentStatus", "tracking-payment-status"], renderedPaymentStatus);
+  setValueByLabel("Jenis layanan", renderedServiceType);
+  setValueByLabel("Jenis item", renderedItemType);
+  setValueByLabel("Payment status", renderedPaymentStatus);
   setText("order-note", notes(order));
   console.log("rendered service type:", renderedServiceType);
   console.log("rendered item type:", renderedItemType);
@@ -388,6 +392,27 @@ function itemTypes(order) {
   return [...new Set(names)].join(", ") || "-";
 }
 
+function finalItemType(orderItems) {
+  const values = (orderItems || []).map(item => item.item_type).filter(Boolean);
+  return [...new Set(values)].join(", ") || "-";
+}
+
+function finalServiceType(orderItems) {
+  const values = (orderItems || [])
+    .map(item => item.service_type || serviceFromNotes(item.notes || item.note))
+    .filter(Boolean);
+  return [...new Set(values)].join(", ") || "-";
+}
+
+function finalPaymentStatus(order, payment) {
+  const status = payment?.status || order?.payment_status || "-";
+  const normalized = normalizeStatus(status);
+  if (normalized === "paid") return "Paid";
+  if (normalized === "unpaid") return "Unpaid";
+  if (normalized === "partial") return "Partial";
+  return status === "-" ? "-" : String(status).charAt(0).toUpperCase() + String(status).slice(1);
+}
+
 function notes(order) {
   return (order.order_items || []).map(item => stripServiceFromNotes(item.notes)).filter(Boolean).join(", ") || "-";
 }
@@ -426,6 +451,10 @@ function trackingPayment(order) {
 function setText(id, value) {
   const el = document.getElementById(id);
   if (el) el.textContent = value || "-";
+}
+
+function setManyText(ids, value) {
+  ids.forEach(id => setText(id, value));
 }
 
 function setTrackingValue(id, labelText, value) {
