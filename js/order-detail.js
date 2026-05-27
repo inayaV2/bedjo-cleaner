@@ -2,6 +2,7 @@ const session = getSession();
 if (!session || session.role !== "operator") window.location.replace("../login.html");
 
 const orderId = new URLSearchParams(window.location.search).get("id");
+console.log("order-detail URL orderId:", orderId);
 let order = null;
 let trackingUrl = "";
 let orderPhotos = [];
@@ -316,9 +317,11 @@ function initPhotoUpload() {
     const files = [...(event.target.files || [])];
     if (!files.length) return;
 
+    let uploadedCount = 0;
     for (const file of files) {
       try {
         await uploadOrderPhoto(file);
+        uploadedCount += 1;
       } catch {
         break;
       }
@@ -327,7 +330,9 @@ function initPhotoUpload() {
     event.target.value = "";
     orderPhotos = await fetchOrderPhotos(order?.id || orderId);
     renderPhotos();
-    showToast("Foto item berhasil ditambahkan.");
+    if (uploadedCount > 0) {
+      showToast(`${uploadedCount} foto item berhasil diupload.`);
+    }
   });
 }
 
@@ -370,7 +375,13 @@ async function fetchOrderPhotos(id) {
 
 async function uploadOrderPhoto(file) {
   const id = order?.id || orderId;
-  if (!id) throw new Error("Order belum siap.");
+  console.log("upload photo orderId:", id);
+  console.log("selected file:", file);
+  if (!id) {
+    const error = new Error("Order ID tidak terbaca dari URL/detail order.");
+    alert(error.message);
+    throw error;
+  }
   const btn = document.getElementById("btnAddPhoto");
   if (btn) {
     btn.disabled = true;
@@ -379,24 +390,35 @@ async function uploadOrderPhoto(file) {
 
   const ext = fileExtension(file.name || "jpg");
   const filePath = `${id}-${Date.now()}.${ext}`;
+  console.log("filePath:", filePath);
   const bucket = supabaseClient.storage.from("order-photos");
   try {
-    const { error: uploadError } = await bucket.upload(filePath, file, {
+    const uploadResult = await bucket.upload(filePath, file, {
       cacheControl: "3600",
       upsert: false,
       contentType: file.type || "image/jpeg",
     });
+    console.log("storage upload result/error:", uploadResult.data, uploadResult.error);
+    const uploadError = uploadResult.error;
     if (uploadError) throw uploadError;
 
     const { data: publicData } = bucket.getPublicUrl(filePath);
     const photoUrl = publicData?.publicUrl || "";
-    const { error: insertError } = await supabaseClient
+    console.log("publicUrl:", photoUrl);
+    if (!photoUrl) throw new Error("Public URL foto kosong setelah upload Storage.");
+
+    const insertResult = await supabaseClient
       .from("order_photos")
-      .insert({ order_id: id, photo_url: photoUrl, file_path: filePath });
+      .insert({ order_id: id, photo_url: photoUrl, file_path: filePath })
+      .select("id, order_id, photo_url, file_path")
+      .single();
+    console.log("insert order_photos result/error:", insertResult.data, insertResult.error);
+    const insertError = insertResult.error;
     if (insertError) throw insertError;
+    return insertResult.data;
   } catch (error) {
     console.error("Upload foto order gagal:", error);
-    showToast("Gagal upload foto ke Supabase.");
+    alert("Gagal upload foto ke Supabase: " + (error.message || JSON.stringify(error)));
     throw error;
   } finally {
     if (btn) {
