@@ -61,7 +61,31 @@ async function loadOrder(value) {
     return;
   }
 
-  const { data: order, error } = await supabaseClient
+  const { data: order, error } = await fetchTrackingOrder(orderCode);
+
+  if (error) {
+    console.error("Tracking fetch error:", error);
+    showError();
+    return;
+  }
+
+  if (!order) {
+    showError();
+    return;
+  }
+
+  console.log("tracking order:", order);
+  console.log("tracking order_items:", order.order_items || []);
+  console.log("tracking payment:", trackingPayment(order));
+
+  order.order_photos = await fetchOrderPhotos(order.id);
+  order.payment_proofs = await fetchPaymentProofs(order.id);
+  subscribeTrackingMedia(order);
+  renderOrder(order);
+}
+
+async function fetchTrackingOrder(orderCode) {
+  const full = await supabaseClient
     .from("orders")
     .select(`
       id,
@@ -77,6 +101,8 @@ async function loadOrder(value) {
       order_items (
         id,
         item_type,
+        service_type,
+        service_name,
         color,
         notes,
         quantity,
@@ -99,38 +125,63 @@ async function loadOrder(value) {
     .eq("order_code", orderCode)
     .maybeSingle();
 
-  if (error) {
-    console.error("Tracking fetch error:", error);
-    showError();
-    return;
-  }
+  if (!full.error) return full;
+  console.warn("Tracking relation query failed, retry without services relation:", full.error);
 
-  if (!order) {
-    showError();
-    return;
-  }
-
-  order.order_photos = await fetchOrderPhotos(order.id);
-  order.payment_proofs = await fetchPaymentProofs(order.id);
-  subscribeTrackingMedia(order);
-  renderOrder(order);
+  return supabaseClient
+    .from("orders")
+    .select(`
+      id,
+      order_code,
+      customer_name,
+      customer_phone,
+      status,
+      branch_id,
+      created_at,
+      order_items (
+        id,
+        item_type,
+        service_type,
+        service_name,
+        color,
+        notes,
+        quantity,
+        price,
+        subtotal
+      ),
+      payments (
+        id,
+        method,
+        amount,
+        paid_amount,
+        status
+      )
+    `)
+    .eq("order_code", orderCode)
+    .maybeSingle();
 }
 
 function renderOrder(order) {
   const name = order.customer_name || "Customer";
   const statusKey = normalizeStatus(order.status);
   const statusCfg = STATUS_CONFIG[statusKey] || STATUS_CONFIG.pending;
-  const payment = order.payments?.[0] || null;
+  const payment = trackingPayment(order);
+  const renderedServiceType = serviceNames(order);
+  const renderedItemType = itemTypes(order);
+  const renderedPaymentStatus = paymentStatusText(payment);
 
   setText("avatar-initials", name.charAt(0).toUpperCase());
   setText("customer-name", name);
   setText("order-id", `Order ID: #${order.order_code || order.id}`);
   setText("order-date", formatDate(order.created_at));
   setText("customer-phone", order.customer_phone || "-");
-  setText("service-type", serviceNames(order));
-  setText("item-type", itemTypes(order));
-  setText("payment-status", paymentStatusText(payment));
+  setText("service-type", renderedServiceType);
+  setText("item-type", renderedItemType);
+  setText("payment-status", renderedPaymentStatus);
   setText("order-note", notes(order));
+  console.log("rendered service type:", renderedServiceType);
+  console.log("rendered item type:", renderedItemType);
+  console.log("rendered payment status:", renderedPaymentStatus);
 
   const badge = document.getElementById("status-badge");
   if (badge) {
@@ -300,7 +351,7 @@ function showError() {
 }
 
 function serviceNames(order) {
-  const names = (order.order_items || []).map(item => item.services?.name || item.service_type || item.service_name || serviceFromNotes(item.notes)).filter(Boolean);
+  const names = (order.order_items || []).map(item => item.service_type || item.services?.name || item.service_name || serviceFromNotes(item.notes)).filter(Boolean);
   return [...new Set(names)].join(", ") || "-";
 }
 
@@ -332,6 +383,10 @@ function paymentStatusText(payment) {
   if (total > 0 && paid >= total) return "Paid";
   if (paid > 0) return "Partial";
   return "Unpaid";
+}
+
+function trackingPayment(order) {
+  return Array.isArray(order.payments) ? order.payments[0] || null : order.payment || null;
 }
 
 function setText(id, value) {
