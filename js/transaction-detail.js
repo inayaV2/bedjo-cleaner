@@ -7,6 +7,9 @@ document.addEventListener("DOMContentLoaded", () => {
   loadTransactionDetail();
 });
 
+let currentPaymentId = "";
+let proofChannel = null;
+
 async function loadTransactionDetail() {
   const id = new URLSearchParams(window.location.search).get("id");
   if (!id) {
@@ -56,7 +59,11 @@ async function loadTransactionDetail() {
     return;
   }
 
-  renderTransaction(mapPayment(payment));
+  const transaction = mapPayment(payment);
+  currentPaymentId = payment.id;
+  renderTransaction(transaction);
+  await loadPaymentProof(payment.id);
+  subscribePaymentProof(payment.id);
 }
 
 function mapPayment(payment) {
@@ -66,6 +73,7 @@ function mapPayment(payment) {
   const status = normalizePaymentStatus(payment.status, amount, paidAmount);
   return {
     id: payment.id,
+    orderId: order.id || payment.order_id,
     idLabel: `TRX-${String(payment.id).slice(0, 8).toUpperCase()}`,
     orderCode: order.order_code || payment.order_id || "-",
     customer: order.customer_name || "-",
@@ -107,7 +115,8 @@ function renderTransaction(transaction) {
   setText("serviceType", transaction.serviceType);
   setText("itemDetails", transaction.itemType);
   setText("notes", "-");
-  setText("proofName", "-");
+  setText("proofName", "Belum ada bukti pembayaran");
+  renderProofImage("");
   setText("orderStatus", transaction.orderStatus);
   setText("timelineStatus", transaction.orderStatus);
 
@@ -119,6 +128,55 @@ function renderTransaction(transaction) {
 
   const paidBar = document.getElementById("paymentStatus");
   if (paidBar) paidBar.className = `td-paid-bar ${transaction.status}`;
+}
+
+async function loadPaymentProof(paymentId) {
+  try {
+    const { data, error } = await supabaseClient
+      .from("payment_proofs")
+      .select("id, payment_id, proof_url, file_path, created_at")
+      .eq("payment_id", paymentId)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (error) throw error;
+    const proof = data?.[0] || null;
+    renderProofImage(proof?.proof_url || "");
+    setText("proofName", proof?.file_path || (proof?.proof_url ? "Payment proof uploaded" : "Belum ada bukti pembayaran"));
+  } catch (error) {
+    console.warn("Gagal load payment proof:", error);
+    renderProofImage("");
+    setText("proofName", "Belum ada bukti pembayaran");
+  }
+}
+
+function renderProofImage(url) {
+  const img = document.getElementById("proofImage");
+  const placeholder = document.getElementById("proofPlaceholder");
+  if (img && url) {
+    img.src = url;
+    img.style.display = "block";
+    if (placeholder) placeholder.style.display = "none";
+    return;
+  }
+  if (img) {
+    img.removeAttribute("src");
+    img.style.display = "none";
+  }
+  if (placeholder) placeholder.style.display = "";
+}
+
+function subscribePaymentProof(paymentId) {
+  if (!paymentId || !supabaseClient.channel) return;
+  if (proofChannel) supabaseClient.removeChannel(proofChannel);
+  proofChannel = supabaseClient
+    .channel(`payment-proof-${paymentId}`)
+    .on("postgres_changes", {
+      event: "*",
+      schema: "public",
+      table: "payment_proofs",
+      filter: `payment_id=eq.${paymentId}`,
+    }, () => loadPaymentProof(paymentId))
+    .subscribe();
 }
 
 function initProfile() {

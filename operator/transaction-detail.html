@@ -12,9 +12,9 @@
   <link rel="stylesheet" href="../css/operator-dashboard.css" />
   <link rel="stylesheet" href="../css/transactions.css" />
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script defer src="../js/supabase.js"></script>
-  <script defer src="../js/auth-guard.js"></script>
-  <script defer src="../js/transaction-detail.js"></script>
+  <script defer src="../js/supabase.js?v=20260527-2"></script>
+  <script defer src="../js/auth-guard.js?v=20260527-2"></script>
+  <script defer src="../js/transaction-detail.js?v=20260527-2"></script>
 </head>
 <body>
 
@@ -127,8 +127,9 @@
             <span class="td-uploaded">Uploaded</span>
           </div>
           <div class="proof-row">
-            <div class="proof-thumb">
-              <div class="receipt-lines"></div>
+            <div class="proof-thumb" id="proofThumb">
+              <img id="proofImage" src="" alt="Payment proof" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:8px;" />
+              <div class="receipt-lines" id="proofPlaceholder"></div>
             </div>
             <span id="proofName">transfer_receipt_budi.jpg</span>
           </div>

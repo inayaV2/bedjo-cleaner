@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bedjo Cleaner – Track Order</title>
-  <link rel="stylesheet" href="../css/tracking.css?v=20260527-1" />
+  <link rel="stylesheet" href="../css/tracking.css?v=20260527-2" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
@@ -95,6 +95,16 @@
         </div>
       </div>
 
+      <div class="photo-block">
+        <p class="photo-label">Bukti pembayaran:</p>
+        <div class="photo-wrapper">
+          <img id="payment-proof-photo" src="" alt="Bukti pembayaran" class="item-photo hidden" />
+          <div id="no-payment-proof" class="no-photo hidden">
+            <span>Tidak ada bukti pembayaran</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Note -->
       <div class="note-block">
         <p class="photo-label">Catatan:</p>
@@ -128,8 +138,8 @@
   </main>
 
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script defer src="../js/supabase.js?v=20260527-1"></script>
-  <script defer src="../js/app-config.js?v=20260527-1"></script>
-  <script defer src="../js/tracking.js?v=20260527-1"></script>
+  <script defer src="../js/supabase.js?v=20260527-2"></script>
+  <script defer src="../js/app-config.js?v=20260527-2"></script>
+  <script defer src="../js/tracking.js?v=20260527-2"></script>
 </body>
 </html>

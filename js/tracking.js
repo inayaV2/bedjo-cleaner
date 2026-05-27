@@ -30,6 +30,7 @@ const orderCardEl = document.getElementById("order-card");
 const helpCardEl = document.getElementById("help-card");
 const formEl = document.getElementById("tracking-form");
 const inputEl = document.getElementById("tracking-input");
+let trackingPhotosChannel = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   const params = new URLSearchParams(window.location.search);
@@ -88,6 +89,7 @@ async function loadOrder(value) {
         )
       ),
       payments (
+        id,
         method,
         amount,
         paid_amount,
@@ -109,6 +111,8 @@ async function loadOrder(value) {
   }
 
   order.order_photos = await fetchOrderPhotos(order.id);
+  order.payment_proofs = await fetchPaymentProofs(order.id);
+  subscribeTrackingMedia(order);
   renderOrder(order);
 }
 
@@ -135,6 +139,7 @@ function renderOrder(order) {
   }
 
   renderPhoto(order);
+  renderPaymentProof(order);
   renderTimeline(statusKey);
 
   const waNumber = window.BedjoContact?.whatsappNumber?.() || "";
@@ -148,6 +153,25 @@ function renderOrder(order) {
   errorEl?.classList.add("hidden");
   orderCardEl?.classList.remove("hidden");
   helpCardEl?.classList.remove("hidden");
+}
+
+async function fetchPaymentProofs(orderId) {
+  if (!orderId) return [];
+  try {
+    const { data, error } = await supabaseClient
+      .from("payment_proofs")
+      .select("proof_url, file_path, created_at")
+      .eq("order_id", orderId)
+      .order("created_at", { ascending: false });
+    if (error) {
+      console.warn("Tracking payment_proofs fetch error:", error);
+      return [];
+    }
+    return data || [];
+  } catch (error) {
+    console.warn("Tracking payment_proofs fetch error:", error);
+    return [];
+  }
 }
 
 async function fetchOrderPhotos(orderId) {
@@ -183,6 +207,48 @@ function renderPhoto(order) {
 
   img?.classList.add("hidden");
   noPhoto?.classList.remove("hidden");
+}
+
+function renderPaymentProof(order) {
+  const img = document.getElementById("payment-proof-photo");
+  const noProof = document.getElementById("no-payment-proof");
+  const proofUrl = order.payment_proofs?.[0]?.proof_url || "";
+
+  if (img && proofUrl) {
+    img.src = proofUrl;
+    img.classList.remove("hidden");
+    noProof?.classList.add("hidden");
+    return;
+  }
+
+  img?.classList.add("hidden");
+  noProof?.classList.remove("hidden");
+}
+
+function subscribeTrackingMedia(order) {
+  if (!order?.id || !supabaseClient.channel) return;
+  if (trackingPhotosChannel) supabaseClient.removeChannel(trackingPhotosChannel);
+  trackingPhotosChannel = supabaseClient
+    .channel(`tracking-media-${order.id}`)
+    .on("postgres_changes", {
+      event: "*",
+      schema: "public",
+      table: "order_photos",
+      filter: `order_id=eq.${order.id}`,
+    }, async () => {
+      order.order_photos = await fetchOrderPhotos(order.id);
+      renderPhoto(order);
+    })
+    .on("postgres_changes", {
+      event: "*",
+      schema: "public",
+      table: "payment_proofs",
+      filter: `order_id=eq.${order.id}`,
+    }, async () => {
+      order.payment_proofs = await fetchPaymentProofs(order.id);
+      renderPaymentProof(order);
+    })
+    .subscribe();
 }
 
 function renderTimeline(statusKey) {

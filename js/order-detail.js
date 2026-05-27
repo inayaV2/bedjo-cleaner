@@ -5,6 +5,7 @@ const orderId = new URLSearchParams(window.location.search).get("id");
 let order = null;
 let trackingUrl = "";
 let orderPhotos = [];
+let photosChannel = null;
 const SERVICE_PRICE_FALLBACK = {
   "sepatu bersih": 20000,
   "tas bersih": 22000,
@@ -41,6 +42,7 @@ async function loadOrder() {
   }
 
   orderPhotos = await fetchOrderPhotos(order.id);
+  subscribeOrderPhotos(order.id);
   renderOrder();
 }
 
@@ -293,7 +295,7 @@ function initShell() {
 function renderPhotos() {
   const grid = document.getElementById("photosGrid");
   if (!grid) return;
-  const photos = orderPhotos.length ? orderPhotos : getLocalOrderPhotos(order?.id || orderId).map(url => ({ photo_url: url, local: true }));
+  const photos = orderPhotos;
   grid.innerHTML = photos.length
     ? photos.map((photo, index) => `
         <div class="photo-thumb" style="position:relative;">
@@ -315,7 +317,11 @@ function initPhotoUpload() {
     if (!files.length) return;
 
     for (const file of files) {
-      await uploadOrderPhoto(file);
+      try {
+        await uploadOrderPhoto(file);
+      } catch {
+        break;
+      }
     }
 
     event.target.value = "";
@@ -335,10 +341,6 @@ async function removeOrderPhoto(index) {
       if (storageError) console.warn("Gagal hapus file foto:", storageError);
     }
     orderPhotos.splice(index, 1);
-  } else {
-    const photos = getLocalOrderPhotos(order?.id || orderId);
-    photos.splice(index, 1);
-    saveLocalOrderPhotos(order?.id || orderId, photos);
   }
   renderPhotos();
   showToast("Foto item dihapus.");
@@ -354,7 +356,7 @@ async function fetchOrderPhotos(id) {
       .order("created_at", { ascending: true });
 
     if (!error) return data || [];
-    console.warn("Gagal fetch order_photos, fallback local/order_items:", error);
+    console.warn("Gagal fetch order_photos:", error);
   } catch (error) {
     console.warn("Gagal fetch order_photos:", error);
   }
@@ -363,77 +365,67 @@ async function fetchOrderPhotos(id) {
     .map(item => item.photo_url || item.image_url)
     .filter(Boolean)
     .map(url => ({ photo_url: url }));
-  if (itemPhotos.length) return itemPhotos;
-  return getLocalOrderPhotos(id).map(url => ({ photo_url: url, local: true }));
+  return itemPhotos;
 }
 
 async function uploadOrderPhoto(file) {
   const id = order?.id || orderId;
   if (!id) throw new Error("Order belum siap.");
-  const filePath = `${id}/${Date.now()}-${safeFileName(file.name || "photo.jpg")}`;
+  const btn = document.getElementById("btnAddPhoto");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Uploading...";
+  }
+
+  const ext = fileExtension(file.name || "jpg");
+  const filePath = `${id}-${Date.now()}.${ext}`;
   const bucket = supabaseClient.storage.from("order-photos");
-  const { error: uploadError } = await bucket.upload(filePath, file, {
-    cacheControl: "3600",
-    upsert: false,
-    contentType: file.type || "image/jpeg",
-  });
-
-  if (uploadError) {
-    console.warn("Upload Supabase Storage gagal, fallback localStorage:", uploadError);
-    const photos = getLocalOrderPhotos(id);
-    photos.push(await fileToDataUrl(file));
-    saveLocalOrderPhotos(id, photos);
-    return;
-  }
-
-  const { data: publicData } = bucket.getPublicUrl(filePath);
-  const photoUrl = publicData?.publicUrl || "";
-  const { error: insertError } = await supabaseClient
-    .from("order_photos")
-    .insert({ order_id: id, photo_url: photoUrl, file_path: filePath });
-
-  if (!insertError) return;
-  console.warn("Insert order_photos gagal, coba simpan ke order_items.photo_url:", insertError);
-
-  const firstItemId = order?.order_items?.[0]?.id;
-  if (firstItemId) {
-    const { error: itemError } = await supabaseClient
-      .from("order_items")
-      .update({ photo_url: photoUrl })
-      .eq("id", firstItemId);
-    if (!itemError) return;
-    console.warn("Update order_items.photo_url gagal:", itemError);
-  }
-}
-
-function safeFileName(name) {
-  return String(name || "photo.jpg").replace(/[^a-zA-Z0-9._-]+/g, "-");
-}
-
-function getLocalOrderPhotos(id) {
   try {
-    return JSON.parse(localStorage.getItem(`bc_order_photos_${id}`) || "[]");
-  } catch {
-    return [];
-  }
-}
+    const { error: uploadError } = await bucket.upload(filePath, file, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: file.type || "image/jpeg",
+    });
+    if (uploadError) throw uploadError;
 
-function saveLocalOrderPhotos(id, photos) {
-  try {
-    localStorage.setItem(`bc_order_photos_${id}`, JSON.stringify(photos));
+    const { data: publicData } = bucket.getPublicUrl(filePath);
+    const photoUrl = publicData?.publicUrl || "";
+    const { error: insertError } = await supabaseClient
+      .from("order_photos")
+      .insert({ order_id: id, photo_url: photoUrl, file_path: filePath });
+    if (insertError) throw insertError;
   } catch (error) {
-    console.warn("Gagal menyimpan foto item lokal:", error);
-    showToast("Foto terlalu besar untuk disimpan di browser.");
+    console.error("Upload foto order gagal:", error);
+    showToast("Gagal upload foto ke Supabase.");
+    throw error;
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "+ Add Photo";
+    }
   }
 }
 
-function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+function subscribeOrderPhotos(id) {
+  if (!id || !supabaseClient.channel) return;
+  if (photosChannel) supabaseClient.removeChannel(photosChannel);
+  photosChannel = supabaseClient
+    .channel(`order-photos-${id}`)
+    .on("postgres_changes", {
+      event: "*",
+      schema: "public",
+      table: "order_photos",
+      filter: `order_id=eq.${id}`,
+    }, async () => {
+      orderPhotos = await fetchOrderPhotos(id);
+      renderPhotos();
+    })
+    .subscribe();
+}
+
+function fileExtension(name) {
+  const ext = String(name || "").split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return ext || "jpg";
 }
 
 function serviceNames(row) {

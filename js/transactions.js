@@ -216,6 +216,7 @@ const amountPaid = document.getElementById("amountPaid");
 const paymentProof = document.getElementById("paymentProof");
 const proofPreview = document.getElementById("proofPreview");
 let selectedProofDataUrl = "";
+let selectedProofFile = null;
 
 function openPaymentDrawer(id) {
   const trx = TRANSACTIONS.find(t => t.id === id);
@@ -225,8 +226,9 @@ function openPaymentDrawer(id) {
   setPaymentStatus(trx.status);
   paymentMethod.value = paymentMethodValue(trx.method);
   amountPaid.value = trx.paidAmount;
-  selectedProofDataUrl = getLocalPaymentProof(trx.id) || "";
-  renderProofPreview(selectedProofDataUrl);
+  selectedProofDataUrl = "";
+  selectedProofFile = null;
+  loadPaymentProofPreview(trx.id);
   updatePaymentSummary(trx.amount, trx.paidAmount);
 
   paymentDrawer?.classList.add("show");
@@ -269,18 +271,17 @@ document.getElementById("paymentForm")?.addEventListener("submit", async e => {
     paid_amount: nextPaidAmount,
   });
 
-  if (submitBtn) {
-    submitBtn.disabled = false;
-    submitBtn.textContent = "Save Changes";
-  }
-
   if (error) {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Save Changes";
+    }
     console.error("Error update payment:", error);
     alert("Gagal update payment: " + (error.message || error));
     return;
   }
 
-  if (selectedProofDataUrl) await savePaymentProof(trx.id, selectedProofDataUrl);
+  if (selectedProofFile) await savePaymentProof(trx, selectedProofFile);
   await createNotification({
     type: "payment_updated",
     title: "Payment updated",
@@ -291,6 +292,10 @@ document.getElementById("paymentForm")?.addEventListener("submit", async e => {
     customer_phone: trx.phone,
   });
   closeDrawerPayment();
+  if (submitBtn) {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Save Changes";
+  }
   alert("Payment updated successfully!");
   await loadTransactions();
 });
@@ -311,6 +316,7 @@ document.querySelectorAll('input[name="paymentStatus"]').forEach(input => {
 paymentProof?.addEventListener("change", async () => {
   const file = paymentProof.files?.[0];
   if (!file) return;
+  selectedProofFile = file;
   selectedProofDataUrl = await fileToDataUrl(file);
   renderProofPreview(selectedProofDataUrl);
 });
@@ -376,53 +382,52 @@ function fileToDataUrl(file) {
   });
 }
 
-function saveLocalPaymentProof(paymentId, dataUrl) {
+async function savePaymentProof(trx, file) {
+  const filePath = `${trx.orderId || trx.id}-${Date.now()}.${fileExtension(file.name)}`;
+  const bucket = supabaseClient.storage.from("payment-proofs");
   try {
-    localStorage.setItem(`bc_payment_proof_${paymentId}`, dataUrl);
-  } catch (error) {
-    console.warn("Gagal menyimpan payment proof lokal:", error);
-  }
-}
-
-async function savePaymentProof(paymentId, dataUrl) {
-  const payment = TRANSACTIONS.find(item => item.id === paymentId);
-  try {
-    const blob = dataUrlToBlob(dataUrl);
-    const filePath = `${payment?.orderId || "payments"}/${paymentId}-${Date.now()}.jpg`;
-    const bucket = supabaseClient.storage.from("order-photos");
-    const { error: uploadError } = await bucket.upload(filePath, blob, {
-      contentType: blob.type || "image/jpeg",
+    const { error: uploadError } = await bucket.upload(filePath, file, {
+      contentType: file.type || "image/jpeg",
       upsert: false,
     });
     if (uploadError) throw uploadError;
 
     const { data } = bucket.getPublicUrl(filePath);
-    const { error: updateError } = await supabaseClient
-      .from("payments")
-      .update({ proof_url: data?.publicUrl || "" })
-      .eq("id", paymentId);
-    if (updateError) throw updateError;
+    const publicUrl = data?.publicUrl || "";
+    const { error: insertError } = await supabaseClient
+      .from("payment_proofs")
+      .insert({
+        payment_id: trx.id,
+        order_id: trx.orderId,
+        proof_url: publicUrl,
+        file_path: filePath,
+      });
+    if (insertError) throw insertError;
   } catch (error) {
-    console.warn("Gagal simpan payment proof ke Supabase, fallback localStorage:", error);
-    saveLocalPaymentProof(paymentId, dataUrl);
+    console.error("Gagal simpan payment proof ke Supabase:", error);
+    alert("Payment terupdate, tapi upload bukti pembayaran gagal: " + (error.message || error));
   }
 }
 
-function dataUrlToBlob(dataUrl) {
-  const [meta, base64] = String(dataUrl || "").split(",");
-  const type = meta.match(/data:(.*?);base64/)?.[1] || "image/jpeg";
-  const bytes = atob(base64 || "");
-  const buffer = new Uint8Array(bytes.length);
-  for (let i = 0; i < bytes.length; i += 1) buffer[i] = bytes.charCodeAt(i);
-  return new Blob([buffer], { type });
-}
-
-function getLocalPaymentProof(paymentId) {
+async function loadPaymentProofPreview(paymentId) {
+  renderProofPreview("");
   try {
-    return localStorage.getItem(`bc_payment_proof_${paymentId}`) || "";
-  } catch {
-    return "";
+    const { data, error } = await supabaseClient
+      .from("payment_proofs")
+      .select("proof_url, file_path, created_at")
+      .eq("payment_id", paymentId)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (error) throw error;
+    renderProofPreview(data?.[0]?.proof_url || "");
+  } catch (error) {
+    console.warn("Gagal load payment proof:", error);
   }
+}
+
+function fileExtension(name) {
+  const ext = String(name || "").split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return ext || "jpg";
 }
 
 function setPaymentStatus(status) {
