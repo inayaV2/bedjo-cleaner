@@ -131,34 +131,22 @@ async function createUser() {
     return alert("Please fill in all required fields, including password and branch.");
   }
 
-  const authResult = await signUpAuthUser(email, password, {
-    full_name: fullName,
-    username,
-    role,
-  });
-
-  if (authResult.error) {
-    console.error("Gagal create auth user:", authResult.error);
-    return alert("Akun login harus dibuat di Supabase Authentication, lalu profile bisa disimpan di table profiles.\n\nError: " + (authResult.error.message || authResult.error));
-  }
-
-  const authUserId = authResult.data?.user?.id;
-  if (!authUserId) {
-    return alert("Akun login harus dibuat di Supabase Authentication, lalu profile bisa disimpan di table profiles.");
-  }
-
-  const payload = {
-    id: authUserId,
-    full_name: fullName,
-    username,
+  const { data, error } = await createUserViaFunction({
+    first_name: firstName,
+    last_name: lastName,
     email,
+    username,
+    password,
     role: normalizeRole(role),
     branch_id: branchId,
-    status: "active",
-  };
+  });
 
-  const { error } = await insertProfile(payload);
-  if (error) return alert("Gagal menyimpan user: " + error.message);
+  console.log("create-user function result:", { data, error });
+
+  if (error) {
+    console.error("Gagal create user via Edge Function:", error);
+    return alert("Gagal membuat user: " + await functionErrorMessage(error));
+  }
 
   logActivity("user-plus", `User Created: ${username}`);
   ["firstName", "lastName", "emailInput", "usernameInput", "passwordInput"].forEach(id => setInput(id, ""));
@@ -230,8 +218,10 @@ function populateBranchSelect(id) {
     branches.map(branch => `<option value="${escapeHtml(branch.id)}">${escapeHtml(branch.name)}</option>`).join("");
 }
 
-async function insertProfile(payload) {
-  return supabaseClient.from("profiles").insert(profilePayload(payload));
+async function createUserViaFunction(payload) {
+  return supabaseClient.functions.invoke("create-user", {
+    body: payload,
+  });
 }
 
 async function updateProfile(id, payload) {
@@ -246,24 +236,19 @@ function profilePayload(payload) {
   }, {});
 }
 
-async function signUpAuthUser(email, password, metadata) {
-  const supabaseUrl = window.BEDJO_SUPABASE_URL || SUPABASE_URL;
-  const supabaseAnonKey = window.BEDJO_SUPABASE_ANON_KEY || SUPABASE_ANON_KEY;
-  const authClient = supabase.createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-  });
+async function functionErrorMessage(error) {
+  if (error?.context instanceof Response) {
+    try {
+      const body = await error.context.clone().json();
+      return body?.error || body?.message || error.message;
+    } catch {
+      return error.message;
+    }
+  }
 
-  return authClient.auth.signUp({
-    email,
-    password,
-    options: {
-      data: metadata,
-    },
-  });
+  return error?.context?.message ||
+    error?.message ||
+    String(error || "Unknown error");
 }
 
 function roleBadge(role) {
