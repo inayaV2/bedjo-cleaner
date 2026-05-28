@@ -226,8 +226,12 @@ function changePage(delta) {
 }
 
 function serviceNames(order) {
-  const names = (order.order_items || []).map(item => item.services?.name).filter(Boolean);
+  const names = (order.order_items || []).map(item => item.service_type || item.service_name || item.services?.name || serviceFromNotes(item.notes)).filter(Boolean);
   return [...new Set(names)].join(", ") || "-";
+}
+
+function serviceFromNotes(note) {
+  return String(note || "").match(/\[service_type:([^\]]+)\]/i)?.[1]?.trim() || "";
 }
 
 function itemTypes(order) {

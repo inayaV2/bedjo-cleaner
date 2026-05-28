@@ -155,7 +155,7 @@
 
 .item-row-grid {
   display: grid;
-  grid-template-columns: 180px 90px minmax(180px, 1fr) 180px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px;
   align-items: end;
 }

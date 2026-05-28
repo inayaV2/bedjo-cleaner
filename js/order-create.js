@@ -15,7 +15,7 @@ let editLoadStarted = false;
 console.log("order-create.js loaded");
 console.log("editOrderId:", editOrderId);
 
-let items = [{ type: "", qty: 1, service: "", serviceId: "", note: "", color: "" }];
+let items = [{ type: "", qty: 1, service: "", serviceId: "", variant: "", note: "", color: "", price: 0 }];
 let selectedBranch = "";
 let selectedPayment = "";
 let selectedStatus = "";
@@ -24,7 +24,61 @@ let editPayment = null;
 let supportsServiceTypeColumn = true;
 let availableServices = [];
 let currentProfile = null;
-const ITEM_TYPES = ["Sepatu", "Tas", "Koper", "Helm"];
+const SERVICES_CATALOG = [
+  { item_type: "Shoes", service_category: "Regular Clean", variant: "Canvas", price: 45000 },
+  { item_type: "Shoes", service_category: "Regular Clean", variant: "Leather", price: 60000 },
+  { item_type: "Shoes", service_category: "Regular Clean", variant: "Suede", price: 55000 },
+  { item_type: "Shoes", service_category: "Regular Clean", variant: "Nubuck", price: 55000 },
+  { item_type: "Shoes", service_category: "Regular Clean", variant: "Kids", price: 40000 },
+  { item_type: "Shoes", service_category: "Regular Clean", variant: "Flatshoes", price: 40000 },
+  { item_type: "Shoes", service_category: "Regular Clean", variant: "Sandal", price: 35000 },
+  { item_type: "Shoes", service_category: "Prioritas Clean", variant: "Canvas", price: 75000 },
+  { item_type: "Shoes", service_category: "Prioritas Clean", variant: "Leather", price: 90000 },
+  { item_type: "Shoes", service_category: "Prioritas Clean", variant: "Suede", price: 85000 },
+  { item_type: "Shoes", service_category: "Prioritas Clean", variant: "Flatshoes", price: 65000 },
+  { item_type: "Shoes", service_category: "Prioritas Clean", variant: "Kids", price: 65000 },
+  { item_type: "Shoes", service_category: "Extra Treatment", variant: "Express 3 Jam", price: 90000 },
+  { item_type: "Shoes", service_category: "Extra Treatment", variant: "Upper Whitening", price: 45000 },
+  { item_type: "Shoes", service_category: "Extra Treatment", variant: "Unyellowing", price: 45000 },
+  { item_type: "Shoes", service_category: "Extra Treatment", variant: "Noda Berat", price: 15000 },
+  { item_type: "Shoes", service_category: "Extra Treatment", variant: "Coating", price: 100000 },
+  { item_type: "Bag", service_category: "Clean Small", variant: "Canvas", price: 100000 },
+  { item_type: "Bag", service_category: "Clean Small", variant: "Leather", price: 125000 },
+  { item_type: "Bag", service_category: "Clean Small", variant: "Suede", price: 150000 },
+  { item_type: "Bag", service_category: "Clean Small", variant: "Kids", price: 95000 },
+  { item_type: "Bag", service_category: "Clean Small", variant: "Backpack", price: 120000 },
+  { item_type: "Bag", service_category: "Clean Medium", variant: "Canvas", price: 125000 },
+  { item_type: "Bag", service_category: "Clean Medium", variant: "Leather", price: 150000 },
+  { item_type: "Bag", service_category: "Clean Medium", variant: "Suede", price: 175000 },
+  { item_type: "Bag", service_category: "Clean Medium", variant: "Kids", price: 110000 },
+  { item_type: "Bag", service_category: "Clean Medium", variant: "Backpack", price: 140000 },
+  { item_type: "Bag", service_category: "Clean Large", variant: "Canvas", price: 150000 },
+  { item_type: "Bag", service_category: "Clean Large", variant: "Leather", price: 175000 },
+  { item_type: "Bag", service_category: "Clean Large", variant: "Suede", price: 200000 },
+  { item_type: "Bag", service_category: "Clean Large", variant: "Kids", price: 135000 },
+  { item_type: "Bag", service_category: "Clean Large", variant: "Backpack", price: 175000 },
+  { item_type: "Koper", service_category: "Clean", variant: "Size Small", price: 80000 },
+  { item_type: "Koper", service_category: "Clean", variant: "Size Medium", price: 100000 },
+  { item_type: "Koper", service_category: "Clean", variant: "Size Large", price: 115000 },
+  { item_type: "Koper", service_category: "Clean", variant: "Size Extra Large", price: 135000 },
+  { item_type: "Stroller", service_category: "Clean", variant: "Single", price: 170000 },
+  { item_type: "Stroller", service_category: "Clean", variant: "Double", price: 200000 },
+  { item_type: "Carrseat", service_category: "Clean", variant: "Size Medium", price: 145000 },
+  { item_type: "Carrseat", service_category: "Clean", variant: "Size Large", price: 180000 },
+  { item_type: "Wallet", service_category: "Clean", variant: "Wallet", price: 80000 },
+  { item_type: "Topi/Cap", service_category: "Clean", variant: "Cap", price: 45000 },
+  { item_type: "Jacket", service_category: "Clean", variant: "Canvas", price: 110000 },
+  { item_type: "Jacket", service_category: "Clean", variant: "Leather", price: 150000 },
+  { item_type: "Jacket", service_category: "Clean", variant: "Parasite", price: 125000 },
+  { item_type: "Repair", service_category: "Koper", variant: "Handle Pecah", price: 250000 },
+  { item_type: "Repair", service_category: "Koper", variant: "Body Koper", price: 450000 },
+  { item_type: "Repair", service_category: "Koper", variant: "Roda Double", price: 550000 },
+  { item_type: "Repair", service_category: "Koper", variant: "Resleting", price: 450000 },
+  { item_type: "Repair", service_category: "Ringan Shoes", variant: "Reglue", price: 75000 },
+  { item_type: "Repair", service_category: "Ringan Shoes", variant: "Reglue/Jahit", price: 150000 },
+  { item_type: "Repair", service_category: "Ringan Shoes", variant: "Jahit Upper", price: 30000 },
+];
+const ITEM_TYPES = uniqueValues(SERVICES_CATALOG.map(item => item.item_type));
 const SERVICE_PRICE_FALLBACK = {
   "sepatu bersih": 20000,
   "sepatu shoes cleaning": 20000,
@@ -50,7 +104,7 @@ function renderItems() {
       <div class="item-row-grid">
         <div class="form-group">
           <label>Item type <span class="req">*</span></label>
-          <select class="item-type-select" onchange="updateItem(${i}, 'type', this.value)">
+          <select class="item-type-select" onchange="selectItemType(${i}, this.value)">
             <option value="">Pilih item</option>
             ${ITEM_TYPES.map(type =>
               `<option value="${type}" ${item.type === type ? "selected" : ""}>${type}</option>`
@@ -68,11 +122,24 @@ function renderItems() {
         </div>
 
         <div class="form-group">
-          <label>Service type <span class="req">*</span></label>
-          <select class="service-type-select" onchange="selectItemService(${i}, this.value)">
-            <option value="">Pilih service</option>
-            ${serviceOptionsHtml(item)}
+          <label>Service category <span class="req">*</span></label>
+          <select class="service-type-select" onchange="selectItemCategory(${i}, this.value)" ${item.type ? "" : "disabled"}>
+            <option value="">Pilih kategori</option>
+            ${serviceCategoryOptionsHtml(item)}
           </select>
+        </div>
+
+        <div class="form-group">
+          <label>Variant <span class="req">*</span></label>
+          <select class="service-variant-select" onchange="selectItemVariant(${i}, this.value)" ${item.service ? "" : "disabled"}>
+            <option value="">Pilih variant</option>
+            ${serviceVariantOptionsHtml(item)}
+          </select>
+        </div>
+
+        <div class="form-group" style="width:120px;">
+          <label>Price</label>
+          <input type="text" value="${escapeAttr(item.price ? formatPlainRupiah(item.price) : "-")}" readonly />
         </div>
 
         <div class="form-group">
@@ -93,30 +160,45 @@ function renderItems() {
 
 function updateItem(i, field, val) {
   items[i][field] = val;
-  if (field === "service") items[i].serviceId = "";
 }
 
-function selectItemService(i, serviceId) {
-  const service = availableServices.find(item => String(item.id) === String(serviceId));
-  items[i].serviceId = service?.id || "";
-  items[i].service = service?.name || "";
+function selectItemType(i, value) {
+  items[i].type = value;
+  items[i].service = "";
+  items[i].serviceId = "";
+  items[i].variant = "";
+  items[i].price = 0;
+  renderItems();
+}
+
+function selectItemCategory(i, value) {
+  items[i].service = value;
+  items[i].serviceId = "";
+  items[i].variant = "";
+  items[i].price = 0;
+  renderItems();
+}
+
+function selectItemVariant(i, value) {
+  items[i].variant = value;
+  const service = catalogEntry(items[i]);
   items[i].price = parsePrice(service?.price);
+  renderItems();
 }
 
-function serviceOptionsHtml(item) {
-  return availableServices.map(service => {
-    const selected = String(item.serviceId || "") === String(service.id) ||
-      (!item.serviceId && normalizeLookup(item.service) === normalizeLookup(service.name) && matchesItemType(service, normalizeLookup(item.type)));
-    return `<option value="${escapeAttr(service.id)}" ${selected ? "selected" : ""}>${escapeHtml(serviceLabel(service))}</option>`;
-  }).join("");
+function serviceCategoryOptionsHtml(item) {
+  return uniqueValues(SERVICES_CATALOG
+    .filter(service => service.item_type === item.type)
+    .map(service => service.service_category))
+    .map(category => `<option value="${escapeAttr(category)}" ${item.service === category ? "selected" : ""}>${escapeHtml(category)}</option>`)
+    .join("");
 }
 
-function serviceLabel(service) {
-  const price = parsePrice(service.price);
-  const parts = [service.name || "Service"];
-  if (service.category) parts.push(service.category);
-  if (price) parts.push(formatPlainRupiah(price));
-  return parts.join(" - ");
+function serviceVariantOptionsHtml(item) {
+  return SERVICES_CATALOG
+    .filter(service => service.item_type === item.type && service.service_category === item.service)
+    .map(service => `<option value="${escapeAttr(service.variant)}" ${item.variant === service.variant ? "selected" : ""}>${escapeHtml(service.variant)} - ${escapeHtml(formatPlainRupiah(service.price))}</option>`)
+    .join("");
 }
 
 function removeItem(i) {
@@ -125,7 +207,7 @@ function removeItem(i) {
 }
 
 function addItem() {
-  items.push({ type: "", qty: 1, service: "", serviceId: "", note: "", color: "" });
+  items.push({ type: "", qty: 1, service: "", serviceId: "", variant: "", note: "", color: "", price: 0 });
   renderItems();
 }
 
@@ -205,27 +287,7 @@ async function loadBranches() {
 }
 
 async function loadServices() {
-  try {
-    const { data, error } = await withTimeout(
-      supabaseClient
-        .from("services")
-        .select("id, name, category, price")
-        .order("name", { ascending: true }),
-      "Memuat services terlalu lama.",
-      8000
-    );
-
-    if (error) throw error;
-    availableServices = data || [];
-  } catch (error) {
-    console.warn("Gagal memuat services, pakai fallback service statis:", error);
-    availableServices = [
-      { id: "sepatu-bersih", name: "bersih", category: "Sepatu", price: 20000 },
-      { id: "tas-bersih", name: "bersih", category: "Tas", price: 22000 },
-      { id: "shoes-cleaning", name: "Shoes Cleaning", category: "Sepatu", price: 20000 },
-      { id: "bag-cleaning", name: "Bag Cleaning", category: "Tas", price: 22000 },
-    ];
-  }
+  availableServices = SERVICES_CATALOG;
 }
 
 function setFormMode() {
@@ -276,11 +338,11 @@ function validate() {
   }
 
   const invalidItem = items.some(item =>
-    !item.type.trim() || !item.service.trim() || !item.qty
+    !item.type.trim() || !item.service.trim() || !String(item.variant || "").trim() || !item.qty
   );
 
   if (invalidItem) {
-    alert("Semua item wajib punya item type, qty, dan service type.");
+    alert("Semua item wajib punya item type, qty, service category, dan variant.");
     ok = false;
   }
 
@@ -329,7 +391,7 @@ async function calculateOrderPricing() {
 
   const details = items.map(item => {
     const qty = Number(item.qty || 1);
-    const service = findMatchingService(item, services);
+    const service = catalogEntry(item) || findMatchingService(item, services);
     const price = servicePrice(service, item);
     const subtotal = price * qty;
 
@@ -340,7 +402,8 @@ async function calculateOrderPricing() {
       service,
       item_type: item.type,
       service_id: item.serviceId || service?.id || "",
-      service_name: item.service || service?.name || "",
+      service_name: item.service || service?.service_category || service?.name || "",
+      variant: item.variant || service?.variant || "",
       price,
       quantity: qty,
       subtotal,
@@ -351,6 +414,7 @@ async function calculateOrderPricing() {
     item_type: detail.item_type,
     service_name: detail.service_name,
     service_id: detail.service_id,
+    variant: detail.variant,
     price: detail.price,
     quantity: detail.quantity,
     subtotal: detail.subtotal,
@@ -361,23 +425,7 @@ async function calculateOrderPricing() {
 }
 
 async function fetchServicesForPricing() {
-  if (availableServices.length) return availableServices;
-
-  const { data, error } = await withTimeout(
-    supabaseClient
-      .from("services")
-      .select("id, name, category, price"),
-    "Mengambil harga service terlalu lama.",
-    8000
-  );
-
-  if (error) {
-    console.log("error Supabase:", error);
-    console.warn("Gagal mengambil services untuk kalkulasi harga, fallback ke harga default:", error);
-    return [];
-  }
-
-  return data || [];
+  return availableServices.length ? availableServices : SERVICES_CATALOG;
 }
 
 function findMatchingService(item, services) {
@@ -399,8 +447,8 @@ function findMatchingService(item, services) {
 
 function matchesService(service, serviceName) {
   if (!serviceName) return false;
-  const name = normalizeLookup(service.name);
-  const category = normalizeLookup(service.category);
+  const name = normalizeLookup(service.name || service.service_category);
+  const category = normalizeLookup(service.category || service.item_type);
   return name === serviceName ||
     category === serviceName ||
     name.includes(serviceName) ||
@@ -409,14 +457,17 @@ function matchesService(service, serviceName) {
 
 function matchesItemType(service, itemType) {
   if (!itemType) return false;
-  const name = normalizeLookup(service.name);
-  const category = normalizeLookup(service.category);
+  const name = normalizeLookup(service.name || service.service_category);
+  const category = normalizeLookup(service.category || service.item_type);
   return category === itemType ||
     category.includes(itemType) ||
     name.includes(itemType);
 }
 
 function servicePrice(service, item) {
+  const catalog = catalogEntry(item);
+  if (catalog) return parsePrice(catalog.price);
+
   const serviceName = normalizeLookup(item.service);
   const itemType = normalizeLookup(item.type);
   const itemFallback = SERVICE_PRICE_FALLBACK[`${itemType} ${serviceName}`.trim()];
@@ -430,6 +481,18 @@ function servicePrice(service, item) {
 
   const fromItem = parsePrice(item.price);
   return fromItem > 0 ? fromItem : 20000;
+}
+
+function catalogEntry(item) {
+  return SERVICES_CATALOG.find(service =>
+    service.item_type === item.type &&
+    service.service_category === item.service &&
+    service.variant === item.variant
+  ) || null;
+}
+
+function uniqueValues(values) {
+  return [...new Set((values || []).filter(Boolean))];
 }
 
 function parsePrice(value) {
@@ -731,17 +794,18 @@ function fillEditForm(order, orderItems, payment) {
 
   items = orderItems.length
     ? orderItems.map(item => ({
-        type: item.item_type || "",
+        type: normalizeLegacyItemType(item.item_type || ""),
         qty: Number(item.quantity || 1),
-        service: item.service_type || item.service_name || item.services?.name || serviceFromNotes(item.notes) || "",
+        service: normalizeLegacyServiceCategory(item.service_type || item.service_name || item.services?.name || serviceFromNotes(item.notes) || ""),
         serviceId: item.service_id || item.services?.id || "",
+        variant: variantFromNotes(item.notes) || inferVariant(item),
         price: parsePrice(item.services?.price || item.price),
         hasServiceTypeColumn: Object.prototype.hasOwnProperty.call(item, "service_type"),
         hasColorColumn: Object.prototype.hasOwnProperty.call(item, "color"),
         color: item.color || "",
-        note: stripServiceFromNotes(item.notes),
+        note: stripCatalogMetaFromNotes(item.notes),
       }))
-    : [{ type: "", qty: 1, service: "", serviceId: "", note: "", color: "" }];
+    : [{ type: "", qty: 1, service: "", serviceId: "", variant: "", note: "", color: "", price: 0 }];
 
   renderItems();
 }
@@ -857,10 +921,11 @@ function buildOrderItemsPayload(orderId, pricing) {
     const price = parsePrice(detail.price) || parsePrice(item.price) || 20000;
     const qty = Number(detail.quantity || item.qty || 1);
     const serviceType = detail.service_name || item.service || "";
+    const notesWithVariant = mergeVariantIntoNotes(detail.variant || item.variant, item.note);
     const payload = {
       order_id: orderId,
       item_type: item.type,
-      notes: item.note || null,
+      notes: notesWithVariant || null,
       quantity: qty,
       price: price,
       subtotal: price * qty,
@@ -905,12 +970,56 @@ function mergeServiceIntoNotes(serviceType, note) {
   return `[service_type:${cleanService}]${cleanNote ? ` ${cleanNote}` : ""}`;
 }
 
+function mergeVariantIntoNotes(variant, note) {
+  const cleanVariant = String(variant || "").trim();
+  const cleanNote = stripCatalogMetaFromNotes(note);
+  if (!cleanVariant) return cleanNote || null;
+  return `[variant:${cleanVariant}]${cleanNote ? ` ${cleanNote}` : ""}`;
+}
+
 function stripServiceFromNotes(note) {
   return String(note || "").replace(/^\[service_type:[^\]]+\]\s*/i, "").trim();
 }
 
 function serviceFromNotes(note) {
   return String(note || "").match(/^\[service_type:([^\]]+)\]/i)?.[1]?.trim() || "";
+}
+
+function variantFromNotes(note) {
+  return String(note || "").match(/\[variant:([^\]]+)\]/i)?.[1]?.trim() || "";
+}
+
+function stripCatalogMetaFromNotes(note) {
+  return String(note || "")
+    .replace(/\[service_type:[^\]]+\]\s*/ig, "")
+    .replace(/\[variant:[^\]]+\]\s*/ig, "")
+    .trim();
+}
+
+function inferVariant(item) {
+  const itemType = normalizeLegacyItemType(item.item_type || "");
+  const serviceName = normalizeLegacyServiceCategory(item.service_type || item.service_name || item.services?.name || serviceFromNotes(item.notes) || "");
+  const price = parsePrice(item.services?.price || item.price);
+  const match = SERVICES_CATALOG.find(service =>
+    service.item_type === itemType &&
+    service.service_category === serviceName &&
+    (!price || parsePrice(service.price) === price)
+  );
+  return match?.variant || "";
+}
+
+function normalizeLegacyItemType(value) {
+  const normalized = normalizeLookup(value);
+  if (normalized === "sepatu") return "Shoes";
+  if (normalized === "tas") return "Bag";
+  return value;
+}
+
+function normalizeLegacyServiceCategory(value) {
+  const normalized = normalizeLookup(value);
+  if (["shoes cleaning", "shoe cleaning", "sepatu cleaning", "bersih"].includes(normalized)) return "Regular Clean";
+  if (["bag cleaning", "tas cleaning"].includes(normalized)) return "Clean Small";
+  return value;
 }
 
 function hasMissingColumnError(error, columnName) {
@@ -942,7 +1051,7 @@ function saveOrderLocally() {
   const customerName = document.getElementById("fCustomer").value.trim();
   const customerEmail = document.getElementById("fEmail").value.trim();
   const customerPhone = document.getElementById("fWa").value.trim();
-  const totalAmount = items.reduce((sum, item) => sum + (Number(item.qty || 1) * (parsePrice(item.price) || SERVICE_PRICE_FALLBACK[normalizeLookup(item.service)] || 20000)), 0);
+  const totalAmount = items.reduce((sum, item) => sum + (Number(item.qty || 1) * (parsePrice(item.price) || parsePrice(catalogEntry(item)?.price) || SERVICE_PRICE_FALLBACK[normalizeLookup(item.service)] || 20000)), 0);
 
   const localOrder = {
     id: orderCode,

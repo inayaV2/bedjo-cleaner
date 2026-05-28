@@ -311,8 +311,12 @@ function viewOrder(id) {
 }
 
 function serviceNames(order) {
-  const names = (order.order_items || []).map(item => item.services?.name || item.item_type).filter(Boolean);
+  const names = (order.order_items || []).map(item => item.service_type || item.service_name || item.services?.name || serviceFromNotes(item.notes) || item.item_type).filter(Boolean);
   return [...new Set(names)].join(", ") || "-";
+}
+
+function serviceFromNotes(note) {
+  return String(note || "").match(/\[service_type:([^\]]+)\]/i)?.[1]?.trim() || "";
 }
 
 function normalizeStatus(status) {
