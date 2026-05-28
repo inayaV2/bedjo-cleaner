@@ -1,5 +1,5 @@
 const session = getSession();
-if (!session || session.role !== "operator") window.location.replace("../login.html");
+if (!session || !["operator", "admin"].includes(session.role)) window.location.replace("../login.html");
 
 const orderId = new URLSearchParams(window.location.search).get("id");
 console.log("order-detail URL orderId:", orderId);
@@ -7,6 +7,7 @@ let order = null;
 let trackingUrl = "";
 let orderPhotos = [];
 let photosChannel = null;
+let currentProfile = null;
 const SERVICE_PRICE_FALLBACK = {
   "sepatu bersih": 20000,
   "tas bersih": 22000,
@@ -27,6 +28,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 async function loadOrder() {
   renderLoading();
+  currentProfile = currentProfile || await loadCurrentProfile();
+
+  if (isOperatorScoped() && !currentProfile?.branch_id) {
+    showToast("Branch operator belum diset.");
+    setTimeout(() => window.location.replace("orders.html"), 900);
+    return;
+  }
 
   const { data, error } = await fetchOrderDetail(orderId);
 
@@ -115,6 +123,7 @@ function runOrderDetailQuery(value, selectClause) {
     .limit(1);
 
   query = isUuid(value) ? query.eq("id", value) : query.eq("order_code", value);
+  if (isOperatorScoped()) query = query.eq("branch_id", currentProfile.branch_id);
   return query;
 }
 
@@ -606,6 +615,33 @@ function getSession() {
   } catch {
     return null;
   }
+}
+
+async function loadCurrentProfile() {
+  const userId = await currentUserId();
+  if (!userId) return { role: session?.role || "operator", branch_id: session?.branch_id || null };
+
+  const { data, error } = await supabaseClient
+    .from("profiles")
+    .select("id, role, branch_id")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) console.error("Error load operator profile:", error);
+  return data || { role: session?.role || "operator", branch_id: session?.branch_id || null };
+}
+
+async function currentUserId() {
+  try {
+    const { data } = await supabaseClient.auth.getUser();
+    return data?.user?.id || session?.user_id || session?.id || null;
+  } catch {
+    return session?.user_id || session?.id || null;
+  }
+}
+
+function isOperatorScoped() {
+  return String(currentProfile?.role || session?.role || "").toLowerCase() === "operator";
 }
 
 function setText(id, val) {

@@ -23,6 +23,7 @@ let editOrder = null;
 let editPayment = null;
 let supportsServiceTypeColumn = true;
 let availableServices = [];
+let currentProfile = null;
 const ITEM_TYPES = ["Sepatu", "Tas", "Koper", "Helm"];
 const SERVICE_PRICE_FALLBACK = {
   "sepatu bersih": 20000,
@@ -458,6 +459,8 @@ async function saveOrderToSupabase() {
   }
 
   if (!validate()) return;
+  if (isOperatorScoped()) selectedBranch = currentProfile?.branch_id || "";
+  if (isOperatorScoped() && !selectedBranch) return alert("Branch operator belum diset.");
 
   const btnSave = document.getElementById("btnSave");
   btnSave.disabled = true;
@@ -745,6 +748,8 @@ function fillEditForm(order, orderItems, payment) {
 
 async function updateOrderToSupabase() {
   if (!validate()) return;
+  if (isOperatorScoped()) selectedBranch = currentProfile?.branch_id || "";
+  if (isOperatorScoped() && !selectedBranch) return alert("Branch operator belum diset.");
 
   const btnSave = document.getElementById("btnSave");
   if (btnSave) {
@@ -1034,6 +1039,33 @@ function branchNameByValue(value) {
   return match?.querySelector(".opt-title")?.textContent || normalizeBranchName(value);
 }
 
+async function loadCurrentProfile() {
+  const userId = await currentUserId();
+  if (!userId) return { role: session?.role || "operator", branch_id: session?.branch_id || null };
+
+  const { data, error } = await supabaseClient
+    .from("profiles")
+    .select("id, role, branch_id")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) console.error("Error load operator profile:", error);
+  return data || { role: session?.role || "operator", branch_id: session?.branch_id || null };
+}
+
+async function currentUserId() {
+  try {
+    const { data } = await supabaseClient.auth.getUser();
+    return data?.user?.id || session?.user_id || session?.id || null;
+  } catch {
+    return session?.user_id || session?.id || null;
+  }
+}
+
+function isOperatorScoped() {
+  return String(currentProfile?.role || session?.role || "").toLowerCase() === "operator";
+}
+
 async function createNotification(payload) {
   if (window.BedjoNotification?.createNotification) {
     return window.BedjoNotification.createNotification(payload);
@@ -1142,8 +1174,16 @@ function initOrderCreatePage() {
   });
   setFormMode();
   renderItems();
-  Promise.all([loadBranches(), loadServices()])
+  loadCurrentProfile()
+    .then(profile => {
+      currentProfile = profile;
+      if (isOperatorScoped()) selectedBranch = profile?.branch_id || selectedBranch;
+    })
+    .then(() => Promise.all([loadBranches(), loadServices()]))
     .finally(() => {
+      if (isOperatorScoped() && selectedBranch) {
+        setCustomSelect("branchDropdown", "branchText", selectedBranch, branchNameByValue(selectedBranch) || "Choose branch");
+      }
       renderItems();
       loadEditOrder();
     });

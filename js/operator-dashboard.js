@@ -1,7 +1,8 @@
-const session = JSON.parse(sessionStorage.getItem("bc_session") || "null");
+const session = JSON.parse(sessionStorage.getItem("bc_session") || localStorage.getItem("bedjo_session") || "null");
 const DASHBOARD_ORDER_LIMIT = 7;
 let dashboardOrders = [];
 let activeQrOrder = null;
+let currentProfile = null;
 
 if (session) {
   const uName = document.getElementById("uName");
@@ -47,7 +48,17 @@ async function loadDashboardData() {
   setText("sCompleted", "...");
   setText("sRevenue", "...");
 
-  const { data: orders, error } = await supabaseClient
+  currentProfile = currentProfile || await loadCurrentProfile();
+
+  if (isOperatorScoped() && !currentProfile?.branch_id) {
+    dashboardOrders = [];
+    renderStats([]);
+    renderTable([]);
+    setActiveQrOrder(null);
+    return;
+  }
+
+  let query = supabaseClient
     .from("orders")
     .select(`
       id,
@@ -55,6 +66,7 @@ async function loadDashboardData() {
       customer_name,
       customer_phone,
       status,
+      branch_id,
       created_at,
       order_items (
         item_type,
@@ -73,6 +85,12 @@ async function loadDashboardData() {
     `)
     .order("created_at", { ascending: false });
 
+  if (isOperatorScoped()) {
+    query = query.eq("branch_id", currentProfile.branch_id);
+  }
+
+  const { data: orders, error } = await query;
+
   if (error) {
     console.error("Error load dashboard orders:", error);
     renderTableState("Gagal memuat data dashboard");
@@ -84,6 +102,36 @@ async function loadDashboardData() {
   renderStats(dashboardOrders);
   renderTable(dashboardOrders);
   setActiveQrOrder(dashboardOrders[0] || null);
+}
+
+async function loadCurrentProfile() {
+  const userId = await currentUserId();
+  if (!userId) return { role: session?.role || "operator", branch_id: session?.branch_id || null };
+
+  const { data, error } = await supabaseClient
+    .from("profiles")
+    .select("id, role, branch_id")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error load operator profile:", error);
+  }
+
+  return data || { role: session?.role || "operator", branch_id: session?.branch_id || null };
+}
+
+async function currentUserId() {
+  try {
+    const { data } = await supabaseClient.auth.getUser();
+    return data?.user?.id || session?.user_id || session?.id || null;
+  } catch {
+    return session?.user_id || session?.id || null;
+  }
+}
+
+function isOperatorScoped() {
+  return String(currentProfile?.role || session?.role || "").toLowerCase() === "operator";
 }
 
 function renderStats(orders) {

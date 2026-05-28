@@ -73,7 +73,7 @@ async function doLogin() {
 
   const { data: profile, error: errProfile } = await supabaseClient
     .from("profiles")
-    .select("role")
+    .select("role, branch_id")
     .eq("id", user.id)
     .single();
 
@@ -98,6 +98,7 @@ async function doLogin() {
     username: user.email,
     email: user.email,
     role,
+    branch_id: profile.branch_id || null,
     name: role === "admin" ? "Admin" : "Operator",
   });
 

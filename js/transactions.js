@@ -4,14 +4,15 @@ let currentStatusFilter = "all";
 let currentDateFilter = "all";
 let currentPage = 1;
 let filteredTransactions = [];
+let currentProfile = null;
 
 const tbody = document.getElementById("transactionTable");
 const searchInput = document.getElementById("searchInput");
-const operatorSession = JSON.parse(sessionStorage.getItem("bc_session") || "null");
+const operatorSession = JSON.parse(sessionStorage.getItem("bc_session") || localStorage.getItem("bedjo_session") || "null");
 
 initSummaryIcons();
 
-if (!operatorSession || operatorSession.role !== "operator") {
+if (!operatorSession || !["operator", "admin"].includes(operatorSession.role)) {
   window.location.replace("../login.html");
 } else {
   const el = document.getElementById("uName");
@@ -22,7 +23,16 @@ async function loadTransactions() {
   renderSummary([]);
   renderTableMessage("Memuat data transaksi...");
 
-  const { data, error } = await supabaseClient
+  currentProfile = currentProfile || await loadCurrentProfile();
+
+  if (isOperatorScoped() && !currentProfile?.branch_id) {
+    TRANSACTIONS.splice(0);
+    renderTableMessage("Branch operator belum diset");
+    applyFilters();
+    return;
+  }
+
+  let query = supabaseClient
     .from("payments")
     .select(`
       id,
@@ -32,12 +42,13 @@ async function loadTransactions() {
       paid_amount,
       status,
       created_at,
-      orders (
+      orders!inner (
         id,
         order_code,
         customer_name,
         customer_phone,
         status,
+        branch_id,
         created_at,
         order_items (
           item_type,
@@ -50,6 +61,12 @@ async function loadTransactions() {
       )
     `)
     .order("created_at", { ascending: false });
+
+  if (isOperatorScoped()) {
+    query = query.eq("orders.branch_id", currentProfile.branch_id);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("Error load payments:", error);
@@ -132,6 +149,33 @@ function renderTable(data) {
   `).join("");
 
   renderPagination();
+}
+
+async function loadCurrentProfile() {
+  const userId = await currentUserId();
+  if (!userId) return { role: operatorSession?.role || "operator", branch_id: operatorSession?.branch_id || null };
+
+  const { data, error } = await supabaseClient
+    .from("profiles")
+    .select("id, role, branch_id")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) console.error("Error load operator profile:", error);
+  return data || { role: operatorSession?.role || "operator", branch_id: operatorSession?.branch_id || null };
+}
+
+async function currentUserId() {
+  try {
+    const { data } = await supabaseClient.auth.getUser();
+    return data?.user?.id || operatorSession?.user_id || operatorSession?.id || null;
+  } catch {
+    return operatorSession?.user_id || operatorSession?.id || null;
+  }
+}
+
+function isOperatorScoped() {
+  return String(currentProfile?.role || operatorSession?.role || "").toLowerCase() === "operator";
 }
 
 function initSummaryIcons() {
@@ -599,4 +643,4 @@ async function createNotification(payload) {
 }
 
 renderSummary([]);
-if (operatorSession && operatorSession.role === "operator") loadTransactions();
+if (operatorSession && ["operator", "admin"].includes(operatorSession.role)) loadTransactions();

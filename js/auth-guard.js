@@ -12,7 +12,7 @@
     return;
   }
 
-  if (path.includes("operator") && session.role !== "operator") {
+  if (path.includes("operator") && !["operator", "admin"].includes(session.role)) {
     window.location.href = "../login.html";
     return;
   }

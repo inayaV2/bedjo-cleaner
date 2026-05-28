@@ -1,5 +1,5 @@
-const session = JSON.parse(sessionStorage.getItem("bc_session") || "null");
-if (!session || session.role !== "operator") window.location.replace("../login.html");
+const session = JSON.parse(sessionStorage.getItem("bc_session") || localStorage.getItem("bedjo_session") || "null");
+if (!session || !["operator", "admin"].includes(session.role)) window.location.replace("../login.html");
 
 document.addEventListener("DOMContentLoaded", () => {
   initProfile();
@@ -9,6 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 let currentPaymentId = "";
 let proofChannel = null;
+let currentProfile = null;
 
 async function loadTransactionDetail() {
   const id = new URLSearchParams(window.location.search).get("id");
@@ -18,8 +19,14 @@ async function loadTransactionDetail() {
   }
 
   renderLoading();
+  currentProfile = currentProfile || await loadCurrentProfile();
 
-  const { data: payment, error } = await supabaseClient
+  if (isOperatorScoped() && !currentProfile?.branch_id) {
+    renderEmpty();
+    return;
+  }
+
+  let query = supabaseClient
     .from("payments")
     .select(`
       id,
@@ -29,12 +36,13 @@ async function loadTransactionDetail() {
       paid_amount,
       status,
       created_at,
-      orders (
+      orders!inner (
         id,
         order_code,
         customer_name,
         customer_phone,
         status,
+        branch_id,
         order_items (
           item_type,
           services (
@@ -45,8 +53,11 @@ async function loadTransactionDetail() {
         )
       )
     `)
-    .eq("id", id)
-    .maybeSingle();
+    .eq("id", id);
+
+  if (isOperatorScoped()) query = query.eq("orders.branch_id", currentProfile.branch_id);
+
+  const { data: payment, error } = await query.maybeSingle();
 
   if (error) {
     console.error("Error load payment detail:", error);
@@ -271,4 +282,31 @@ function formatRupiah(value) {
 function setText(id, value) {
   const element = document.getElementById(id);
   if (element) element.textContent = value || "-";
+}
+
+async function loadCurrentProfile() {
+  const userId = await currentUserId();
+  if (!userId) return { role: session?.role || "operator", branch_id: session?.branch_id || null };
+
+  const { data, error } = await supabaseClient
+    .from("profiles")
+    .select("id, role, branch_id")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) console.error("Error load operator profile:", error);
+  return data || { role: session?.role || "operator", branch_id: session?.branch_id || null };
+}
+
+async function currentUserId() {
+  try {
+    const { data } = await supabaseClient.auth.getUser();
+    return data?.user?.id || session?.user_id || session?.id || null;
+  } catch {
+    return session?.user_id || session?.id || null;
+  }
+}
+
+function isOperatorScoped() {
+  return String(currentProfile?.role || session?.role || "").toLowerCase() === "operator";
 }

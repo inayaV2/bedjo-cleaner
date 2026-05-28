@@ -1,7 +1,8 @@
 const session = getSession();
-if (!session || session.role !== "operator") window.location.replace("../login.html");
+if (!session || !["operator", "admin"].includes(session.role)) window.location.replace("../login.html");
 
 let notifications = [];
+let currentProfile = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   initShell();
@@ -14,10 +15,22 @@ async function loadNotifications() {
   const list = document.getElementById("notificationsList");
   if (list) list.innerHTML = `<p style="color:#6B7280;padding:24px;text-align:center;">Memuat notifikasi...</p>`;
 
-  const { data, error } = await supabaseClient
-    .from("notifications")
-    .select("*")
-    .order("created_at", { ascending: false });
+  currentProfile = currentProfile || await loadCurrentProfile();
+
+  if (isOperatorScoped() && !currentProfile?.branch_id) {
+    notifications = [];
+    renderNotifications();
+    return;
+  }
+
+  const result = isOperatorScoped()
+    ? await loadBranchNotifications(currentProfile.branch_id)
+    : await supabaseClient
+      .from("notifications")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+  const { data, error } = result;
 
   if (error) {
     console.error("Error load notifications:", error);
@@ -27,6 +40,69 @@ async function loadNotifications() {
 
   notifications = (data || []).filter(item => !item.hidden);
   renderNotifications();
+}
+
+async function loadBranchNotifications(branchId) {
+  const joined = await supabaseClient
+    .from("notifications")
+    .select("*, orders!inner(branch_id)")
+    .eq("orders.branch_id", branchId)
+    .order("created_at", { ascending: false });
+
+  if (!joined.error) return joined;
+
+  console.warn("Retry notifications branch filter without relation:", joined.error);
+
+  const { data: branchOrders, error: orderError } = await supabaseClient
+    .from("orders")
+    .select("id, order_code")
+    .eq("branch_id", branchId);
+
+  if (orderError) return { data: null, error: orderError };
+
+  const orderIds = (branchOrders || []).map(order => order.id).filter(Boolean);
+  const orderCodes = (branchOrders || []).map(order => order.order_code).filter(Boolean);
+
+  if (!orderIds.length && !orderCodes.length) return { data: [], error: null };
+
+  const all = await supabaseClient
+    .from("notifications")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (all.error) return all;
+
+  return {
+    data: (all.data || []).filter(item => orderIds.includes(item.order_id) || orderCodes.includes(item.order_code)),
+    error: null,
+  };
+}
+
+async function loadCurrentProfile() {
+  const userId = await currentUserId();
+  if (!userId) return { role: session?.role || "operator", branch_id: session?.branch_id || null };
+
+  const { data, error } = await supabaseClient
+    .from("profiles")
+    .select("id, role, branch_id")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) console.error("Error load operator profile:", error);
+  return data || { role: session?.role || "operator", branch_id: session?.branch_id || null };
+}
+
+async function currentUserId() {
+  try {
+    const { data } = await supabaseClient.auth.getUser();
+    return data?.user?.id || session?.user_id || session?.id || null;
+  } catch {
+    return session?.user_id || session?.id || null;
+  }
+}
+
+function isOperatorScoped() {
+  return String(currentProfile?.role || session?.role || "").toLowerCase() === "operator";
 }
 
 function renderNotifications() {

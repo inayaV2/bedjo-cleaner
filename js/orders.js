@@ -1,5 +1,5 @@
 const session = getSession();
-if (!session || session.role !== "operator") window.location.replace("../login.html");
+if (!session || !["operator", "admin"].includes(session.role)) window.location.replace("../login.html");
 
 const PAGE_SIZE = 8;
 let currentPage = 1;
@@ -8,12 +8,23 @@ let filtered = [];
 let filterVal = "";
 let searchVal = "";
 let ordersPageInitialized = false;
+let currentProfile = null;
 
 console.log("orders.js loaded");
 
 async function loadOrders() {
   showTableMessage("Memuat data order...");
   console.log("loadOrders start");
+  currentProfile = currentProfile || await loadCurrentProfile();
+
+  if (isOperatorScoped() && !currentProfile?.branch_id) {
+    allOrders = [];
+    filtered = [];
+    showTableMessage("Branch operator belum diset");
+    renderPagination();
+    return;
+  }
+
   let didFinish = false;
   const loadingGuard = setTimeout(() => {
     if (!didFinish) {
@@ -74,7 +85,7 @@ async function loadOrderRelationsInBackground() {
 }
 
 function fetchOrdersWithRelations() {
-  return supabaseClient
+  let query = supabaseClient
     .from("orders")
     .select(`
       id,
@@ -83,6 +94,7 @@ function fetchOrdersWithRelations() {
       customer_phone,
       customer_email,
       status,
+      branch_id,
       created_at,
       order_items (
         item_type,
@@ -102,13 +114,19 @@ function fetchOrdersWithRelations() {
       )
     `)
     .order("created_at", { ascending: false });
+
+  if (isOperatorScoped()) query = query.eq("branch_id", currentProfile.branch_id);
+  return query;
 }
 
 function fetchOrdersOnly() {
-  return supabaseClient
+  let query = supabaseClient
     .from("orders")
-    .select("id, order_code, customer_name, customer_phone, customer_email, status, created_at")
+    .select("id, order_code, customer_name, customer_phone, customer_email, status, branch_id, created_at")
     .order("created_at", { ascending: false });
+
+  if (isOperatorScoped()) query = query.eq("branch_id", currentProfile.branch_id);
+  return query;
 }
 
 function withTimeout(promise, message, timeout = 8000) {
@@ -227,6 +245,33 @@ function getSession() {
   } catch {
     return null;
   }
+}
+
+async function loadCurrentProfile() {
+  const userId = await currentUserId();
+  if (!userId) return { role: session?.role || "operator", branch_id: session?.branch_id || null };
+
+  const { data, error } = await supabaseClient
+    .from("profiles")
+    .select("id, role, branch_id")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) console.error("Error load operator profile:", error);
+  return data || { role: session?.role || "operator", branch_id: session?.branch_id || null };
+}
+
+async function currentUserId() {
+  try {
+    const { data } = await supabaseClient.auth.getUser();
+    return data?.user?.id || session?.user_id || session?.id || null;
+  } catch {
+    return session?.user_id || session?.id || null;
+  }
+}
+
+function isOperatorScoped() {
+  return String(currentProfile?.role || session?.role || "").toLowerCase() === "operator";
 }
 
 function normalizeStatus(status) {
