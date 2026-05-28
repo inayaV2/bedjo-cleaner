@@ -166,6 +166,7 @@ function updateItem(i, field, val) {
 }
 
 function selectItemType(i, value) {
+  console.log("selected item type", value);
   console.log("item selected", value);
   items[i].type = value;
   items[i].service = "";
@@ -328,16 +329,27 @@ async function loadServices() {
       .order("category", { ascending: true })
       .order("name", { ascending: true });
 
-    if (error) throw error;
+    if (error) {
+      console.error("services load error", error);
+      throw error;
+    }
 
-    const parsed = normalizeServiceRows(data || []);
-    console.log("services from table parsed", parsed);
+    console.log("loaded services", data || []);
+    const catalog = dedupeServices(normalizeServiceRows(data || []));
+    console.log("catalog", catalog);
+
+    if (catalog.length) {
+      availableServices = catalog;
+      return;
+    }
+
+    availableServices = dedupeServices(SERVICES);
   } catch (error) {
     console.warn("Gagal memuat services dari Supabase, pakai katalog lokal:", error);
+    availableServices = dedupeServices(SERVICES);
   }
 
-  availableServices = dedupeServices(SERVICES);
-  console.log("services catalog", SERVICES);
+  console.log("services catalog", activeServices());
 }
 
 function activeServices() {
@@ -354,9 +366,10 @@ function normalizeServiceRows(rows) {
     const parsed = parseServiceName(row.name);
     return {
       id: row.id || "",
-      item_type: row.category || parsed.item_type || "",
+      service_id: row.id || "",
+      item_type: row.category || "",
       service_category: parsed.service_category || row.name || "",
-      variant: parsed.variant || row.description || row.name || "",
+      variant: parsed.variant || row.name || "",
       price: parsePrice(row.price),
       name: row.name || "",
       category: row.category || "",
