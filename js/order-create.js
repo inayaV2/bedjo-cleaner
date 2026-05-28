@@ -155,9 +155,9 @@ function renderItems() {
 
   container.querySelectorAll(".item-row").forEach(row => {
     populateItemTypes(row);
+    bindItemRowEvents(row);
     populateServiceCategories(row);
     populateVariants(row);
-    bindItemRowEvents(row);
   });
 }
 
@@ -195,6 +195,7 @@ function selectItemVariant(i, value) {
 function populateRenderedItemRows() {
   document.querySelectorAll("#itemsSection .item-row").forEach(row => {
     populateItemTypes(row);
+    bindItemRowEvents(row);
     populateServiceCategories(row);
     populateVariants(row);
   });
@@ -217,12 +218,13 @@ function populateItemTypes(row) {
   itemTypeSelect.value = item.type || "";
   unlockNativeSelect(itemTypeSelect);
   console.log("item type options count", itemTypeSelect.options.length);
+  console.log("item type enabled", itemTypeSelect.disabled);
 }
 
 function populateServiceCategories(row) {
   const index = Number(row.dataset.index);
   const item = items[index] || {};
-  const categorySelect = row.querySelector(".service-type-select");
+  const categorySelect = row.querySelector(".service-category-select, .service-type-select");
   if (!categorySelect) return;
 
   const categories = uniqueValues(activeServices()
@@ -237,13 +239,14 @@ function populateServiceCategories(row) {
   if (!item.type || !categories.length) {
     categorySelect.disabled = true;
     categorySelect.setAttribute("disabled", "disabled");
+    categorySelect.style.pointerEvents = "auto";
   }
 }
 
 function populateVariants(row) {
   const index = Number(row.dataset.index);
   const item = items[index] || {};
-  const variantSelect = row.querySelector(".service-variant-select");
+  const variantSelect = row.querySelector(".variant-select, .service-variant-select");
   if (!variantSelect) return;
 
   const variants = activeServices()
@@ -257,6 +260,7 @@ function populateVariants(row) {
   if (!item.service || !variants.length) {
     variantSelect.disabled = true;
     variantSelect.setAttribute("disabled", "disabled");
+    variantSelect.style.pointerEvents = "auto";
   }
 }
 
@@ -270,6 +274,9 @@ function unlockNativeSelect(select) {
 }
 
 function bindItemRowEvents(row) {
+  if (row.dataset.bound === "true") return;
+  row.dataset.bound = "true";
+
   const index = Number(row.dataset.index);
   const itemTypeSelect = row.querySelector('[data-field="item_type"]');
   const qtySelect = row.querySelector('[data-field="qty"]');
