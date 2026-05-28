@@ -162,8 +162,19 @@
 
 .item-type-select,
 .service-type-select,
+.service-category-select,
+.variant-select,
 .service-variant-select {
   width: 100%;
+  pointer-events: auto;
+  position: relative;
+  z-index: 2;
+}
+
+.item-row,
+.item-row-grid,
+.item-row .form-group {
+  pointer-events: auto;
 }
 
 .qty-field,

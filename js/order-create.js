@@ -121,14 +121,14 @@ function renderItems() {
 
         <div class="form-group">
           <label>Service category <span class="req">*</span></label>
-          <select class="service-type-select" data-field="service_category" ${item.type ? "" : "disabled"}>
+          <select class="service-type-select service-category-select" data-field="service_category">
             <option value="">Pilih kategori</option>
           </select>
         </div>
 
         <div class="form-group">
           <label>Variant <span class="req">*</span></label>
-          <select class="service-variant-select" data-field="variant" ${item.service ? "" : "disabled"}>
+          <select class="service-variant-select variant-select" data-field="variant">
             <option value="">Pilih variant</option>
           </select>
         </div>
@@ -215,7 +215,8 @@ function populateItemTypes(row) {
     .map(type => `<option value="${escapeAttr(type)}">${escapeHtml(type)}</option>`)
     .join("")}`;
   itemTypeSelect.value = item.type || "";
-  itemTypeSelect.disabled = false;
+  unlockNativeSelect(itemTypeSelect);
+  console.log("item type options count", itemTypeSelect.options.length);
 }
 
 function populateServiceCategories(row) {
@@ -232,7 +233,11 @@ function populateServiceCategories(row) {
     .map(category => `<option value="${escapeAttr(category)}">${escapeHtml(category)}</option>`)
     .join("")}`;
   categorySelect.value = item.service || "";
-  categorySelect.disabled = !item.type || !categories.length;
+  unlockNativeSelect(categorySelect);
+  if (!item.type || !categories.length) {
+    categorySelect.disabled = true;
+    categorySelect.setAttribute("disabled", "disabled");
+  }
 }
 
 function populateVariants(row) {
@@ -248,7 +253,20 @@ function populateVariants(row) {
     .map(service => `<option value="${escapeAttr(service.variant)}">${escapeHtml(service.variant)} - ${escapeHtml(formatPlainRupiah(service.price))}</option>`)
     .join("")}`;
   variantSelect.value = item.variant || "";
-  variantSelect.disabled = !item.service || !variants.length;
+  unlockNativeSelect(variantSelect);
+  if (!item.service || !variants.length) {
+    variantSelect.disabled = true;
+    variantSelect.setAttribute("disabled", "disabled");
+  }
+}
+
+function unlockNativeSelect(select) {
+  if (!select) return;
+  select.disabled = false;
+  select.removeAttribute("disabled");
+  select.style.pointerEvents = "auto";
+  select.style.position = "relative";
+  select.style.zIndex = "5";
 }
 
 function bindItemRowEvents(row) {
@@ -262,18 +280,22 @@ function bindItemRowEvents(row) {
   itemTypeSelect?.addEventListener("change", event => {
     selectItemType(index, event.target.value);
   });
+  itemTypeSelect?.addEventListener("pointerdown", event => event.stopPropagation());
 
   qtySelect?.addEventListener("change", event => {
     updateItem(index, "qty", parseInt(event.target.value));
   });
+  qtySelect?.addEventListener("pointerdown", event => event.stopPropagation());
 
   categorySelect?.addEventListener("change", event => {
     selectItemCategory(index, event.target.value);
   });
+  categorySelect?.addEventListener("pointerdown", event => event.stopPropagation());
 
   variantSelect?.addEventListener("change", event => {
     selectItemVariant(index, event.target.value);
   });
+  variantSelect?.addEventListener("pointerdown", event => event.stopPropagation());
 
   noteInput?.addEventListener("input", event => {
     updateItem(index, "note", event.target.value);
