@@ -52,9 +52,15 @@ function initShell() {
 }
 
 async function loadBranches() {
-  const { data, error } = await supabaseClient.from("branches").select("id, name").order("name");
-  if (error) console.warn("Gagal load branches:", error);
+  const { data, error } = await supabaseClient
+    .from("branches")
+    .select("id, name, address, status")
+    .order("name", { ascending: true });
+  if (error) {
+    console.error("Gagal load branches:", error);
+  }
   branches = uniqueAllowedBranchRecords(data);
+  console.log("branches loaded", branches);
   populateBranchSelect("editBranch");
 }
 
@@ -272,22 +278,25 @@ function shortId(id) {
 
 function branchName(id) {
   const match = branches.find(branch => String(branch.id) === String(id));
-  return normalizeBranchName(match?.name);
+  return match?.name || "";
 }
 
-function normalizeBranchName(name) {
+function branchKey(name) {
   const raw = String(name || "").trim().toLowerCase();
-  return ALLOWED_BRANCH_NAMES.find(branch => branch.toLowerCase() === raw) || "";
+  return ALLOWED_BRANCH_NAMES.find(branch => {
+    const branchName = branch.toLowerCase();
+    return raw === branchName || raw.includes(` ${branchName}`) || raw.includes(branchName);
+  }) || "";
 }
 
 function uniqueAllowedBranchRecords(rows) {
   const seen = new Set();
   return (rows || []).reduce((result, row) => {
-    const name = normalizeBranchName(row?.name || row?.branch || row?.id);
+    const key = branchKey(row?.name || row?.branch);
     if (!row?.id || !isUuid(row.id)) return result;
-    if (!name || seen.has(name)) return result;
-    seen.add(name);
-    result.push({ ...row, id: row.id || name, name });
+    if (!key || seen.has(key)) return result;
+    seen.add(key);
+    result.push({ ...row, name: row.name || key });
     return result;
   }, []);
 }
