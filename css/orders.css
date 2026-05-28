@@ -5,7 +5,7 @@
    ============================================================ */
 
 /* Topbar subtitle */
-.tb-title-wrap { display: flex; flex-direction: column; line-height: 1.2; }
+.tb-title-wrap { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
 .tb-sub { font-size: 0.82rem; color: var(--muted); font-weight: 400; margin-top: 1px; }
 
 /* ── Actions bar ── */
@@ -244,10 +244,3 @@
 }
 
 /* Logo PNG di topbar */
-.tb-logo {
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-  flex-shrink: 0;
-  display: block;
-}

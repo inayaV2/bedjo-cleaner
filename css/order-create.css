@@ -3,7 +3,7 @@
    Halaman Create/Edit Order
    ============================================================ */
 
-.tb-title-wrap { display: flex; flex-direction: column; line-height: 1.2; }
+.tb-title-wrap { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
 .tb-title { font-size: 1.45rem; font-weight: 900; color: var(--dark); }
 
 /* ── Form card ── */
@@ -302,11 +302,3 @@
   flex-shrink: 0;
 }
 
-/* Logo PNG di topbar */
-.tb-logo {
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-  flex-shrink: 0;
-  display: block;
-}

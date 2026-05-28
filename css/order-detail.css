@@ -3,7 +3,7 @@
    ============================================================ */
 
 /* ── Topbar heading ── */
-.page-heading   { display: flex; flex-direction: column; gap: 1px; }
+.page-heading   { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .breadcrumb     { font-size: 0.78rem; color: var(--muted); }
 .breadcrumb-link{ color: var(--muted); text-decoration: none; }
 .breadcrumb-link:hover { color: var(--blue); text-decoration: underline; }
@@ -274,11 +274,3 @@
   flex-shrink: 0;
 }
 
-/* Logo PNG di topbar */
-.tb-logo {
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-  flex-shrink: 0;
-  display: block;
-}

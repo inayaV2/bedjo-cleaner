@@ -147,7 +147,8 @@ html, body { height: 100%; font-family: 'Lato', sans-serif; background: var(--bg
 .tb-left {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
+  min-width: 0;
 }
 
 .hamburger {
@@ -163,8 +164,6 @@ html, body { height: 100%; font-family: 'Lato', sans-serif; background: var(--bg
   flex-shrink: 0;
 }
 .hamburger:hover { background: var(--blue-light); }
-
-.tb-logo { display: block; flex-shrink: 0; }
 
 .tb-title {
   font-size: 1.5rem;
@@ -514,11 +513,3 @@ html, body { height: 100%; font-family: 'Lato', sans-serif; background: var(--bg
   flex-shrink: 0;
 }
 
-/* Logo PNG di topbar */
-.tb-logo {
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-  flex-shrink: 0;
-  display: block;
-}
