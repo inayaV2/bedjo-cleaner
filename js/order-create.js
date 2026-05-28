@@ -107,9 +107,6 @@ function renderItems() {
           <label>Item type <span class="req">*</span></label>
           <select class="item-type-select" data-field="item_type">
             <option value="">Pilih item</option>
-            ${activeItemTypes().map(type =>
-              `<option value="${type}" ${item.type === type ? "selected" : ""}>${type}</option>`
-            ).join("")}
           </select>
         </div>
 
@@ -126,7 +123,6 @@ function renderItems() {
           <label>Service category <span class="req">*</span></label>
           <select class="service-type-select" data-field="service_category" ${item.type ? "" : "disabled"}>
             <option value="">Pilih kategori</option>
-            ${serviceCategoryOptionsHtml(item)}
           </select>
         </div>
 
@@ -134,7 +130,6 @@ function renderItems() {
           <label>Variant <span class="req">*</span></label>
           <select class="service-variant-select" data-field="variant" ${item.service ? "" : "disabled"}>
             <option value="">Pilih variant</option>
-            ${serviceVariantOptionsHtml(item)}
           </select>
         </div>
 
@@ -158,7 +153,12 @@ function renderItems() {
     </div>
   `).join("");
 
-  container.querySelectorAll(".item-row").forEach(bindItemRowEvents);
+  container.querySelectorAll(".item-row").forEach(row => {
+    populateItemTypes(row);
+    populateServiceCategories(row);
+    populateVariants(row);
+    bindItemRowEvents(row);
+  });
 }
 
 function updateItem(i, field, val) {
@@ -192,19 +192,63 @@ function selectItemVariant(i, value) {
   renderItems();
 }
 
-function serviceCategoryOptionsHtml(item) {
-  return uniqueValues(activeServices()
-    .filter(service => service.item_type === item.type)
-    .map(service => service.service_category))
-    .map(category => `<option value="${escapeAttr(category)}" ${item.service === category ? "selected" : ""}>${escapeHtml(category)}</option>`)
-    .join("");
+function populateRenderedItemRows() {
+  document.querySelectorAll("#itemsSection .item-row").forEach(row => {
+    populateItemTypes(row);
+    populateServiceCategories(row);
+    populateVariants(row);
+  });
 }
 
-function serviceVariantOptionsHtml(item) {
-  return activeServices()
-    .filter(service => service.item_type === item.type && service.service_category === item.service)
-    .map(service => `<option value="${escapeAttr(service.variant)}" ${item.variant === service.variant ? "selected" : ""}>${escapeHtml(service.variant)} - ${escapeHtml(formatPlainRupiah(service.price))}</option>`)
-    .join("");
+function populateItemTypes(row) {
+  const index = Number(row.dataset.index);
+  const item = items[index] || {};
+  const itemTypeSelect = row.querySelector(".item-type-select");
+  const itemTypes = activeItemTypes();
+
+  console.log("item type select found", itemTypeSelect);
+  console.log("unique item types", itemTypes);
+
+  if (!itemTypeSelect) return;
+
+  itemTypeSelect.innerHTML = `<option value="">Pilih item</option>${itemTypes
+    .map(type => `<option value="${escapeAttr(type)}">${escapeHtml(type)}</option>`)
+    .join("")}`;
+  itemTypeSelect.value = item.type || "";
+  itemTypeSelect.disabled = false;
+}
+
+function populateServiceCategories(row) {
+  const index = Number(row.dataset.index);
+  const item = items[index] || {};
+  const categorySelect = row.querySelector(".service-type-select");
+  if (!categorySelect) return;
+
+  const categories = uniqueValues(activeServices()
+    .filter(service => service.item_type === item.type)
+    .map(service => service.service_category));
+
+  categorySelect.innerHTML = `<option value="">Pilih kategori</option>${categories
+    .map(category => `<option value="${escapeAttr(category)}">${escapeHtml(category)}</option>`)
+    .join("")}`;
+  categorySelect.value = item.service || "";
+  categorySelect.disabled = !item.type || !categories.length;
+}
+
+function populateVariants(row) {
+  const index = Number(row.dataset.index);
+  const item = items[index] || {};
+  const variantSelect = row.querySelector(".service-variant-select");
+  if (!variantSelect) return;
+
+  const variants = activeServices()
+    .filter(service => service.item_type === item.type && service.service_category === item.service);
+
+  variantSelect.innerHTML = `<option value="">Pilih variant</option>${variants
+    .map(service => `<option value="${escapeAttr(service.variant)}">${escapeHtml(service.variant)} - ${escapeHtml(formatPlainRupiah(service.price))}</option>`)
+    .join("")}`;
+  variantSelect.value = item.variant || "";
+  variantSelect.disabled = !item.service || !variants.length;
 }
 
 function bindItemRowEvents(row) {
@@ -340,6 +384,7 @@ async function loadServices() {
 
     if (catalog.length) {
       availableServices = catalog;
+      populateRenderedItemRows();
       return;
     }
 
@@ -350,6 +395,7 @@ async function loadServices() {
   }
 
   console.log("services catalog", activeServices());
+  populateRenderedItemRows();
 }
 
 function activeServices() {
