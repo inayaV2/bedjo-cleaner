@@ -155,13 +155,24 @@
 
 .item-row-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
+  grid-template-columns: 1.2fr .6fr 1.2fr 1.2fr .8fr;
+  gap: 10px 12px;
   align-items: end;
 }
 
-.item-type-select {
+.item-type-select,
+.service-type-select,
+.service-variant-select {
   width: 100%;
+}
+
+.qty-field,
+.price-field {
+  min-width: 0;
+}
+
+.note-field {
+  grid-column: 1 / -1;
 }
 
 .item-row-label {
@@ -268,7 +279,8 @@
 @media (max-width: 640px) {
   .form-card-header, .form-card-body { padding: 20px; }
   .form-row-2, .form-row-3 { grid-template-columns: 1fr; }
-  .item-row-grid { grid-template-columns: 1fr 1fr; }
+  .item-row-grid { grid-template-columns: 1fr; }
+  .note-field { grid-column: auto; }
 }
 
 /* Logo PNG di drawer */

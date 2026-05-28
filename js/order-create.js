@@ -78,7 +78,8 @@ const SERVICES_CATALOG = [
   { item_type: "Repair", service_category: "Ringan Shoes", variant: "Reglue/Jahit", price: 150000 },
   { item_type: "Repair", service_category: "Ringan Shoes", variant: "Jahit Upper", price: 30000 },
 ];
-const ITEM_TYPES = uniqueValues(SERVICES_CATALOG.map(item => item.item_type));
+const SERVICES = SERVICES_CATALOG;
+const ITEM_TYPES = uniqueValues(SERVICES.map(item => item.item_type));
 const SERVICE_PRICE_FALLBACK = {
   "sepatu bersih": 20000,
   "sepatu shoes cleaning": 20000,
@@ -98,23 +99,23 @@ function renderItems() {
   if (!container) return;
 
   container.innerHTML = items.map((item, i) => `
-    <div class="item-row" id="item-${i}">
+    <div class="item-row" id="item-${i}" data-index="${i}">
       <p class="item-row-label">Item ${i + 1}</p>
 
       <div class="item-row-grid">
         <div class="form-group">
           <label>Item type <span class="req">*</span></label>
-          <select class="item-type-select" onchange="selectItemType(${i}, this.value)">
+          <select class="item-type-select" data-field="item_type">
             <option value="">Pilih item</option>
-            ${ITEM_TYPES.map(type =>
+            ${activeItemTypes().map(type =>
               `<option value="${type}" ${item.type === type ? "selected" : ""}>${type}</option>`
             ).join("")}
           </select>
         </div>
 
-        <div class="form-group" style="width:90px;">
+        <div class="form-group qty-field">
           <label>qty <span class="req">*</span></label>
-          <select class="qty-select" onchange="updateItem(${i}, 'qty', parseInt(this.value))">
+          <select class="qty-select" data-field="qty">
             ${[1,2,3,4,5,6,7,8,9,10].map(n =>
               `<option value="${n}" ${item.qty === n ? "selected" : ""}>${n}</option>`
             ).join("")}
@@ -123,7 +124,7 @@ function renderItems() {
 
         <div class="form-group">
           <label>Service category <span class="req">*</span></label>
-          <select class="service-type-select" onchange="selectItemCategory(${i}, this.value)" ${item.type ? "" : "disabled"}>
+          <select class="service-type-select" data-field="service_category" ${item.type ? "" : "disabled"}>
             <option value="">Pilih kategori</option>
             ${serviceCategoryOptionsHtml(item)}
           </select>
@@ -131,21 +132,21 @@ function renderItems() {
 
         <div class="form-group">
           <label>Variant <span class="req">*</span></label>
-          <select class="service-variant-select" onchange="selectItemVariant(${i}, this.value)" ${item.service ? "" : "disabled"}>
+          <select class="service-variant-select" data-field="variant" ${item.service ? "" : "disabled"}>
             <option value="">Pilih variant</option>
             ${serviceVariantOptionsHtml(item)}
           </select>
         </div>
 
-        <div class="form-group" style="width:120px;">
+        <div class="form-group price-field">
           <label>Price</label>
           <input type="text" value="${escapeAttr(item.price ? formatPlainRupiah(item.price) : "-")}" readonly />
         </div>
 
-        <div class="form-group">
+        <div class="form-group note-field">
           <label>Note</label>
           <input type="text" value="${escapeAttr(item.note)}" placeholder="Optional note"
-            oninput="updateItem(${i}, 'note', this.value)" />
+            data-field="note" />
         </div>
       </div>
 
@@ -156,6 +157,8 @@ function renderItems() {
       ` : ""}
     </div>
   `).join("");
+
+  container.querySelectorAll(".item-row").forEach(bindItemRowEvents);
 }
 
 function updateItem(i, field, val) {
@@ -163,6 +166,7 @@ function updateItem(i, field, val) {
 }
 
 function selectItemType(i, value) {
+  console.log("item selected", value);
   items[i].type = value;
   items[i].service = "";
   items[i].serviceId = "";
@@ -172,6 +176,7 @@ function selectItemType(i, value) {
 }
 
 function selectItemCategory(i, value) {
+  console.log("category selected", value);
   items[i].service = value;
   items[i].serviceId = "";
   items[i].variant = "";
@@ -187,7 +192,7 @@ function selectItemVariant(i, value) {
 }
 
 function serviceCategoryOptionsHtml(item) {
-  return uniqueValues(SERVICES_CATALOG
+  return uniqueValues(activeServices()
     .filter(service => service.item_type === item.type)
     .map(service => service.service_category))
     .map(category => `<option value="${escapeAttr(category)}" ${item.service === category ? "selected" : ""}>${escapeHtml(category)}</option>`)
@@ -195,10 +200,39 @@ function serviceCategoryOptionsHtml(item) {
 }
 
 function serviceVariantOptionsHtml(item) {
-  return SERVICES_CATALOG
+  return activeServices()
     .filter(service => service.item_type === item.type && service.service_category === item.service)
     .map(service => `<option value="${escapeAttr(service.variant)}" ${item.variant === service.variant ? "selected" : ""}>${escapeHtml(service.variant)} - ${escapeHtml(formatPlainRupiah(service.price))}</option>`)
     .join("");
+}
+
+function bindItemRowEvents(row) {
+  const index = Number(row.dataset.index);
+  const itemTypeSelect = row.querySelector('[data-field="item_type"]');
+  const qtySelect = row.querySelector('[data-field="qty"]');
+  const categorySelect = row.querySelector('[data-field="service_category"]');
+  const variantSelect = row.querySelector('[data-field="variant"]');
+  const noteInput = row.querySelector('[data-field="note"]');
+
+  itemTypeSelect?.addEventListener("change", event => {
+    selectItemType(index, event.target.value);
+  });
+
+  qtySelect?.addEventListener("change", event => {
+    updateItem(index, "qty", parseInt(event.target.value));
+  });
+
+  categorySelect?.addEventListener("change", event => {
+    selectItemCategory(index, event.target.value);
+  });
+
+  variantSelect?.addEventListener("change", event => {
+    selectItemVariant(index, event.target.value);
+  });
+
+  noteInput?.addEventListener("input", event => {
+    updateItem(index, "note", event.target.value);
+  });
 }
 
 function removeItem(i) {
@@ -287,7 +321,77 @@ async function loadBranches() {
 }
 
 async function loadServices() {
-  availableServices = SERVICES_CATALOG;
+  try {
+    const { data, error } = await supabaseClient
+      .from("services")
+      .select("id, name, category, price, description")
+      .order("category", { ascending: true })
+      .order("name", { ascending: true });
+
+    if (error) throw error;
+
+    const parsed = normalizeServiceRows(data || []);
+    console.log("services from table parsed", parsed);
+  } catch (error) {
+    console.warn("Gagal memuat services dari Supabase, pakai katalog lokal:", error);
+  }
+
+  availableServices = dedupeServices(SERVICES);
+  console.log("services catalog", SERVICES);
+}
+
+function activeServices() {
+  return availableServices.length ? availableServices : SERVICES;
+}
+
+function activeItemTypes() {
+  const values = uniqueValues(activeServices().map(service => service.item_type));
+  return values.length ? values : ITEM_TYPES;
+}
+
+function normalizeServiceRows(rows) {
+  return rows.map(row => {
+    const parsed = parseServiceName(row.name);
+    return {
+      id: row.id || "",
+      item_type: row.category || parsed.item_type || "",
+      service_category: parsed.service_category || row.name || "",
+      variant: parsed.variant || row.description || row.name || "",
+      price: parsePrice(row.price),
+      name: row.name || "",
+      category: row.category || "",
+      description: row.description || "",
+    };
+  }).filter(service =>
+    service.item_type &&
+    service.service_category &&
+    service.variant &&
+    parsePrice(service.price) > 0
+  );
+}
+
+function parseServiceName(name) {
+  const text = String(name || "").trim();
+  const [category, ...variantParts] = text.split(" - ");
+  return {
+    service_category: category?.trim() || "",
+    variant: variantParts.join(" - ").trim(),
+  };
+}
+
+function dedupeServices(services) {
+  const seen = new Set();
+  return services.filter(service => {
+    const key = [
+      service.item_type,
+      service.service_category,
+      service.variant,
+      service.price,
+    ].map(value => String(value || "").toLowerCase().trim()).join("|");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function setFormMode() {
@@ -425,7 +529,7 @@ async function calculateOrderPricing() {
 }
 
 async function fetchServicesForPricing() {
-  return availableServices.length ? availableServices : SERVICES_CATALOG;
+  return activeServices();
 }
 
 function findMatchingService(item, services) {
@@ -484,7 +588,7 @@ function servicePrice(service, item) {
 }
 
 function catalogEntry(item) {
-  return SERVICES_CATALOG.find(service =>
+  return activeServices().find(service =>
     service.item_type === item.type &&
     service.service_category === item.service &&
     service.variant === item.variant
@@ -1000,7 +1104,7 @@ function inferVariant(item) {
   const itemType = normalizeLegacyItemType(item.item_type || "");
   const serviceName = normalizeLegacyServiceCategory(item.service_type || item.service_name || item.services?.name || serviceFromNotes(item.notes) || "");
   const price = parsePrice(item.services?.price || item.price);
-  const match = SERVICES_CATALOG.find(service =>
+  const match = activeServices().find(service =>
     service.item_type === itemType &&
     service.service_category === serviceName &&
     (!price || parsePrice(service.price) === price)
