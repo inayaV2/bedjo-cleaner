@@ -38,6 +38,9 @@ function initShell() {
   document.getElementById("logoutBtn")?.addEventListener("click", async () => {
     await supabaseClient.auth.signOut();
     sessionStorage.removeItem("bc_session");
+    sessionStorage.removeItem("bedjo_session");
+    sessionStorage.removeItem("bc_saved_order");
+    localStorage.removeItem("bc_session");
     localStorage.removeItem("bedjo_session");
     localStorage.removeItem("bc_remember");
     window.location.href = "../login.html";
