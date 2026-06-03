@@ -1,182 +1,193 @@
-/**
- * js/order-output.js — Bedjo Cleaner
- * Halaman Output QR setelah Create/Edit Order
- *
- * ══════════════════════════════════════════════════════════════
- *  PENJELASAN SISTEM QR CODE
- * ══════════════════════════════════════════════════════════════
- *
- *  QR code yang dibuat di sini berisi sebuah URL:
- *
- *    public/tracking.html?code={order_code}
- *
- *  URL ini adalah halaman public (public/tracking.html) yang
- *  bisa dibuka siapa saja — pelanggan tidak perlu login.
- *
- *  ALUR LENGKAP:
- *  1. Operator buat/edit order → klik Save
- *  2. Data order disimpan ke database (Supabase)
- *  3. Halaman ini muncul, QR digenerate dari URL tracking
- *  4. Operator bisa:
- *     - Download QR → cetak / kirim manual
- *     - Send to WhatsApp → buka wa.me dengan pesan + link
- *  5. Pelanggan scan QR → buka URL tracking → lihat status order
- *
- *  LIBRARY: qrcode.js (via CDN, tidak butuh server/API)
- *  qrcode.js mengubah string URL menjadi gambar QR di browser.
- * ══════════════════════════════════════════════════════════════
- */
-
-// ── Auth Guard ────────────────────────────────────────────────────────────────
 function getSession() {
-  try { return JSON.parse(sessionStorage.getItem("bc_session")); } catch { return null; }
+  try {
+    return JSON.parse(sessionStorage.getItem("bc_session"));
+  } catch {
+    return null;
+  }
 }
 
-const _session = getSession();
-if (!_session || _session.role !== "operator") {
+const session = getSession();
+if (!session || session.role !== "operator") {
   window.location.replace("../login.html");
 }
 
-// ── Ambil data order dari sessionStorage ──────────────────────────────────────
-// Data ini disimpan oleh order-create.js saat klik Save
-let order = null;
-try {
-  order = JSON.parse(sessionStorage.getItem("bc_saved_order"));
-} catch (e) { order = null; }
+const outputOrderId = new URLSearchParams(window.location.search).get("id");
+let order = readSavedOrder();
+let trackingUrl = "";
+let qrInstance = null;
 
-// Jika tidak ada data → redirect ke orders
-if (!order) {
+if (!outputOrderId && !order) {
   window.location.replace("orders.html");
 }
 
-// ── Konfigurasi ───────────────────────────────────────────────────────────────
-// URL yang akan diencode ke dalam QR.
-// Mengikuti host aplikasi saat ini, bukan domain eksternal yang belum dikonfigurasi.
-const orderTrackingCode = order.order_code || order.id;
-const trackingUrl = buildTrackingUrl(orderTrackingCode, order.id);
-const waNumber      = order.wa ? order.wa.replace(/[^0-9]/g, "") : "";
+document.addEventListener("DOMContentLoaded", async () => {
+  order = await loadOutputOrder();
+  if (!order) {
+    alert("Order tidak ditemukan.");
+    window.location.replace("orders.html");
+    return;
+  }
 
-// ── Generate QR Code ──────────────────────────────────────────────────────────
-// qrcode.js diload dari CDN di HTML → tersedia sebagai global QRCode
-let qrInstance = null;
+  const orderCode = order.order_code || order.id;
+  trackingUrl = buildTrackingUrl(orderCode);
 
-document.addEventListener("DOMContentLoaded", function () {
-
-  // Set username
   const uNameEl = document.getElementById("uName");
-  if (uNameEl && _session) uNameEl.textContent = _session.role === "operator" ? "Operator" : (_session.name || "Operator");
+  if (uNameEl) uNameEl.textContent = session.role === "operator" ? "Operator" : (session.name || "Operator");
 
-  // Set order ID label
   const orderIdEl = document.getElementById("qrOrderId");
-  if (orderIdEl) orderIdEl.textContent = `Order #${orderTrackingCode}`;
+  if (orderIdEl) orderIdEl.textContent = `Order #${orderCode}`;
 
-  // Set tracking URL display
   const trackUrlEl = document.getElementById("trackingUrl");
   if (trackUrlEl) trackUrlEl.textContent = displayTrackingUrl(trackingUrl);
 
-  // Generate QR menggunakan qrcode.js
-  // qrcode.js membuat elemen <canvas> atau <img> di dalam container
+  renderQr(trackingUrl);
+  setupDownloadQr(orderCode);
+  setupWhatsappButton(order, trackingUrl);
+  setupCopyLink();
+  setupBackButton();
+  setupDrawer();
+  setupUserDropdown();
+});
+
+function readSavedOrder() {
+  try {
+    return JSON.parse(sessionStorage.getItem("bc_saved_order"));
+  } catch {
+    return null;
+  }
+}
+
+async function loadOutputOrder() {
+  if (!outputOrderId) return order;
+
+  const { data, error } = await supabaseClient
+    .from("orders")
+    .select("id, order_code, customer_name, customer_phone")
+    .eq("id", outputOrderId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Gagal fetch order output:", error);
+    return order;
+  }
+
+  return data || order;
+}
+
+function renderQr(url) {
   const container = document.getElementById("qrCodeContainer");
   if (container && typeof QRCode !== "undefined") {
+    container.innerHTML = "";
     qrInstance = new QRCode(container, {
-      text:         trackingUrl,   // ← isi QR = URL tracking order ini
-      width:        180,
-      height:       180,
-      colorDark:    "#000000",
-      colorLight:   "#ffffff",
-      correctLevel: QRCode.CorrectLevel.H,  // High error correction
+      text: url,
+      width: 180,
+      height: 180,
+      colorDark: "#000000",
+      colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.H,
     });
-  } else if (container) {
-    // Fallback jika CDN gagal load: tampilkan pesan
+    return;
+  }
+
+  if (container) {
     container.innerHTML = `<div style="font-size:0.8rem;color:#6B7280;text-align:center;padding:20px;">
       QR tidak dapat dimuat.<br>Cek koneksi internet.
     </div>`;
   }
+}
 
-  // ── Download QR ────────────────────────────────────────────────────────────
+function setupDownloadQr(orderCode) {
   document.getElementById("btnDlQR")?.addEventListener("click", () => {
-    // qrcode.js membuat <canvas> di dalam container — ambil canvas-nya
     const canvas = document.querySelector("#qrCodeContainer canvas");
-    if (canvas) {
-      const link  = document.createElement("a");
-      link.download = `QR_${order.id}.png`;
-      link.href   = canvas.toDataURL("image/png");
-      link.click();
-      return;
-    }
-    // Jika render sebagai <img>
     const img = document.querySelector("#qrCodeContainer img");
-    if (img) {
-      const link = document.createElement("a");
-      link.download = `QR_${order.id}.png`;
-      link.href = img.src;
-      link.click();
-    }
+    const link = document.createElement("a");
+    link.download = `QR_${orderCode || "order"}.png`;
+    link.href = canvas ? canvas.toDataURL("image/png") : (img?.src || "");
+    if (link.href) link.click();
   });
+}
 
-  // ── Send to WhatsApp ───────────────────────────────────────────────────────
-  document.getElementById("btnWA")?.addEventListener("click", () => {
-    const msg = encodeURIComponent(
-      `Halo, berikut link tracking pesanan Bedjo Cleaner Anda: ${trackingUrl}`
-    );
+function setupWhatsappButton(currentOrder, publicTrackingLink) {
+  const whatsappButton = document.getElementById("btnWA");
+  if (!whatsappButton) return;
 
-    // Jika ada nomor WA pelanggan → buka chat langsung ke nomor tersebut
-    // Jika tidak ada → buka share umum
-    const waTarget = waNumber
-      ? `https://wa.me/${waNumber}?text=${msg}`
-      : `https://wa.me/?text=${msg}`;
+  const rawPhone = currentOrder?.customer_phone || "";
+  const normalizedPhone = normalizeWhatsappPhone(rawPhone);
+  console.log("output whatsapp phone", rawPhone, normalizedPhone);
 
-    window.open(waTarget, "_blank");
-  });
+  if (!normalizedPhone) {
+    whatsappButton.removeAttribute("href");
+    whatsappButton.removeAttribute("target");
+    whatsappButton.setAttribute("aria-disabled", "true");
+    whatsappButton.addEventListener("click", event => {
+      event.preventDefault();
+      alert("Nomor WhatsApp pelanggan tidak tersedia");
+    });
+    return;
+  }
 
-  // ── Copy Tracking Link ─────────────────────────────────────────────────────
+  const message = [
+    `Halo ${currentOrder.customer_name || ""}, berikut link tracking pesanan Bedjo Cleaner Anda:`,
+    publicTrackingLink,
+    `Kode Order: #${currentOrder.order_code || currentOrder.id || ""}`,
+  ].join("\n");
+  const whatsappUrl = `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(message)}`;
+
+  whatsappButton.href = whatsappUrl;
+  whatsappButton.target = "_blank";
+  whatsappButton.rel = "noopener";
+}
+
+function normalizeWhatsappPhone(value) {
+  let phone = String(value || "").replace(/[\s()+-]/g, "").replace(/\D/g, "");
+  if (!phone) return "";
+  if (phone.startsWith("0")) return `62${phone.slice(1)}`;
+  if (phone.startsWith("8")) return `62${phone}`;
+  return phone;
+}
+
+function setupCopyLink() {
   document.getElementById("btnCopy")?.addEventListener("click", () => {
     navigator.clipboard.writeText(trackingUrl).then(() => {
-      const btn = document.getElementById("btnCopy");
-      if (btn) {
-        btn.textContent = "Copied!";
-        setTimeout(() => btn.textContent = "Copy Link", 2000);
-      }
+      setCopyButtonText("Copied!");
     }).catch(() => {
-      // Fallback untuk browser yang tidak support clipboard API
       const ta = document.createElement("textarea");
       ta.value = trackingUrl;
       document.body.appendChild(ta);
       ta.select();
       document.execCommand("copy");
       document.body.removeChild(ta);
-      const btn = document.getElementById("btnCopy");
-      if (btn) {
-        btn.textContent = "Copied!";
-        setTimeout(() => btn.textContent = "Copy Link", 2000);
-      }
+      setCopyButtonText("Copied!");
     });
   });
+}
 
-  // ── Back to Dashboard ──────────────────────────────────────────────────────
+function setCopyButtonText(text) {
+  const btn = document.getElementById("btnCopy");
+  if (!btn) return;
+  btn.textContent = text;
+  setTimeout(() => btn.textContent = "Copy Link", 2000);
+}
+
+function setupBackButton() {
   document.getElementById("btnBack")?.addEventListener("click", () => {
-    // Hapus data order sementara dari session
     sessionStorage.removeItem("bc_saved_order");
     window.location.href = "operator-dashboard.html";
   });
+}
 
-  // ── Drawer ─────────────────────────────────────────────────────────────────
+function setupDrawer() {
   let drawerOpen = window.innerWidth >= 768;
 
   function syncDrawer() {
-    const drawer   = document.getElementById("drawer");
+    const drawer = document.getElementById("drawer");
     const mainWrap = document.getElementById("mainWrap");
-    const overlay  = document.getElementById("overlay");
+    const overlay = document.getElementById("overlay");
     if (!drawer || !mainWrap) return;
-    if (drawerOpen) {
-      drawer.classList.remove("collapsed");
-      mainWrap.classList.remove("expanded");
-      if (overlay) overlay.classList.remove("show");
-    } else {
-      drawer.classList.add("collapsed");
-      mainWrap.classList.add("expanded");
-      if (overlay && window.innerWidth < 768) overlay.classList.add("show");
-    }
+
+    drawer.classList.toggle("collapsed", !drawerOpen);
+    mainWrap.classList.toggle("expanded", !drawerOpen);
+    overlay?.classList.toggle("show", !drawerOpen && window.innerWidth < 768);
   }
 
   if (window.innerWidth < 768) drawerOpen = false;
@@ -190,12 +201,13 @@ document.addEventListener("DOMContentLoaded", function () {
     drawerOpen = false;
     syncDrawer();
   });
+}
 
-  // ── User dropdown ───────────────────────────────────────────────────────────
-  const userPill  = document.getElementById("userPill");
+function setupUserDropdown() {
+  const userPill = document.getElementById("userPill");
   const uDropdown = document.getElementById("uDropdown");
-  userPill?.addEventListener("click", e => {
-    e.stopPropagation();
+  userPill?.addEventListener("click", event => {
+    event.stopPropagation();
     uDropdown?.classList.toggle("open");
   });
   document.addEventListener("click", () => uDropdown?.classList.remove("open"));
@@ -203,14 +215,13 @@ document.addEventListener("DOMContentLoaded", function () {
     sessionStorage.removeItem("bc_session");
     window.location.replace("../login.html");
   });
-
-});
+}
 
 function buildTrackingUrl(orderCode) {
   if (window.BedjoUrl?.tracking) return window.BedjoUrl.tracking(orderCode);
   const url = new URL("../public/tracking.html", window.location.href);
   url.searchParams.set("code", orderCode);
-  url.searchParams.set("v", "20260519-3");
+  url.searchParams.set("v", "20260603-6");
   return url.href;
 }
 

@@ -116,9 +116,14 @@
   border: none;
   border-radius: 999px;
   cursor: pointer;
+  text-decoration: none;
   transition: background .18s;
 }
 .btn-wa:hover { background: #15803D; }
+.btn-wa[aria-disabled="true"] {
+  opacity: .65;
+  cursor: not-allowed;
+}
 
 /* ── Tracking shortcut card ── */
 .tracking-output-card {
