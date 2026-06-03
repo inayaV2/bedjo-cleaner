@@ -4,14 +4,13 @@ if (!session || session.role !== "admin") window.location.href = "../login.html"
 let users = [];
 let branches = [];
 let currentRows = [];
-let activities = [];
 const ALLOWED_BRANCH_NAMES = ["BEC", "Ciwalk", "PVJ", "TSM", "BTC"];
 
 document.addEventListener("DOMContentLoaded", async () => {
   initShell();
   await loadBranches();
   await loadUsers();
-  renderActivities();
+  await loadActivities();
 });
 
 function initShell() {
@@ -123,24 +122,22 @@ function renderTable(data) {
 }
 
 async function createUser() {
-  const firstName = value("firstName");
-  const lastName = value("lastName");
   const email = value("emailInput");
-  const username = value("usernameInput");
   const password = value("passwordInput");
   const role = value("roleInput") || "operator";
   const branchId = value("branchInput");
-  const fullName = [firstName, lastName].filter(Boolean).join(" ");
+  const status = value("statusInput") || "active";
+  const identity = identityFromEmail(email);
 
-  if (!fullName || !email || !username || !password || !role || !branchId) {
+  if (!email || !password || !role || !branchId || !status) {
     return alert("Please fill in all required fields, including password and branch.");
   }
 
   const { data, error } = await createUserViaFunction({
-    first_name: firstName,
-    last_name: lastName,
+    first_name: identity.firstName,
+    last_name: identity.lastName,
     email,
-    username,
+    username: identity.username,
     password,
     role: normalizeRole(role),
     branch_id: branchId,
@@ -153,11 +150,24 @@ async function createUser() {
     return alert("Gagal membuat user: " + await functionErrorMessage(error));
   }
 
-  logActivity("user-plus", `User Created: ${username}`);
-  ["firstName", "lastName", "emailInput", "usernameInput", "passwordInput"].forEach(id => setInput(id, ""));
+  const createdUserId = data?.user?.id;
+  if (createdUserId && status !== "active") {
+    const { error: statusError } = await updateProfile(createdUserId, { status });
+    if (statusError) console.error("Gagal update status user baru:", statusError);
+  }
+
+  await createActivityLog({
+    action: "user_created",
+    description: `User created: ${email}`,
+    user_email: email,
+  });
+
+  ["emailInput", "passwordInput"].forEach(id => setInput(id, ""));
   setInput("roleInput", "operator");
   setInput("branchInput", "");
+  setInput("statusInput", "active");
   await loadUsers();
+  await loadActivities();
 }
 
 function openEdit(index) {
@@ -190,9 +200,14 @@ async function saveEditUser() {
   const { error } = await updateProfile(u.id, payload);
   if (error) return alert("Gagal update user: " + error.message);
 
-  logActivity("user-pen", `User Updated: ${payload.username}`);
+  await createActivityLog({
+    action: "user_updated",
+    description: `User updated: ${payload.email}`,
+    user_email: payload.email,
+  });
   document.getElementById("editModal")?.classList.remove("open");
   await loadUsers();
+  await loadActivities();
 }
 
 async function deleteUser(index) {
@@ -200,8 +215,13 @@ async function deleteUser(index) {
   if (!u || !confirm("Delete this user?")) return;
   const { error } = await supabaseClient.from("profiles").delete().eq("id", u.id);
   if (error) return alert("Gagal delete user: " + error.message);
-  logActivity("user-minus", `User Deleted: ${u.username}`);
+  await createActivityLog({
+    action: "user_deleted",
+    description: `User deleted: ${u.email}`,
+    user_email: u.email,
+  });
   await loadUsers();
+  await loadActivities();
 }
 
 function applySearch() {
@@ -272,21 +292,100 @@ function showTableMessage(message) {
   if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:#94a3b8">${escapeHtml(message)}</td></tr>`;
 }
 
-function logActivity(icon, label) {
-  activities.unshift({ icon, label, time: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) + " WIB" });
-  if (activities.length > 10) activities.pop();
-  renderActivities();
+async function loadActivities() {
+  const { data, error } = await supabaseClient
+    .from("activity_logs")
+    .select("id, action, description, user_email, created_at")
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  if (error) {
+    console.warn("Gagal load activity_logs:", error);
+    renderActivities([]);
+    return;
+  }
+
+  renderActivities(data || []);
 }
 
-function renderActivities() {
+async function createActivityLog(payload) {
+  const insertPayload = {
+    action: payload.action,
+    description: payload.description,
+    user_email: payload.user_email,
+    created_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabaseClient
+    .from("activity_logs")
+    .insert(insertPayload);
+
+  if (error) {
+    console.warn("Gagal insert activity_logs:", error);
+  }
+}
+
+function renderActivities(rows) {
   const list = document.getElementById("activityList");
   if (!list) return;
-  list.innerHTML = activities.map(a => `
+  if (!rows?.length) {
+    list.innerHTML = `<li class="activity-item"><span class="activity-left">Belum ada aktivitas</span></li>`;
+    return;
+  }
+
+  list.innerHTML = rows.map(a => `
     <li class="activity-item">
-      <span class="activity-left"><i class="fa-solid fa-circle-info"></i>${escapeHtml(a.label)}</span>
-      <span class="activity-time">${escapeHtml(a.time)}</span>
+      <span class="activity-left"><i class="fa-solid ${activityIcon(a.action)}"></i>${escapeHtml(a.description || a.action || "-")}</span>
+      <span class="activity-time">${escapeHtml(relativeTime(a.created_at))}</span>
     </li>
-  `).join("") || `<li class="activity-item"><span class="activity-left">Belum ada aktivitas</span></li>`;
+  `).join("");
+}
+
+function identityFromEmail(email) {
+  const username = String(email || "").split("@")[0].trim().toLowerCase();
+  const words = username
+    .replace(/[._-]+/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .map(displayNameWord);
+  const fullName = words.join(" ") || "User";
+
+  return {
+    username,
+    firstName: words[0] || fullName,
+    lastName: words.slice(1).join(" "),
+    fullName,
+  };
+}
+
+function capitalizeWord(word) {
+  return String(word || "").charAt(0).toUpperCase() + String(word || "").slice(1).toLowerCase();
+}
+
+function displayNameWord(word) {
+  const raw = String(word || "").trim();
+  const branch = ALLOWED_BRANCH_NAMES.find(name => name.toLowerCase() === raw.toLowerCase());
+  return branch || capitalizeWord(raw);
+}
+
+function activityIcon(action) {
+  const normalized = String(action || "");
+  if (normalized.includes("created")) return "fa-user-plus";
+  if (normalized.includes("updated")) return "fa-user-pen";
+  if (normalized.includes("deleted")) return "fa-user-minus";
+  return "fa-circle-info";
+}
+
+function relativeTime(value) {
+  if (!value) return "-";
+  const diff = Date.now() - new Date(value).getTime();
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  if (diff < minute) return "Baru saja";
+  if (diff < hour) return `${Math.floor(diff / minute)} menit lalu`;
+  if (diff < day) return `${Math.floor(diff / hour)} jam lalu`;
+  return new Date(value).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 function normalizeRole(role) {

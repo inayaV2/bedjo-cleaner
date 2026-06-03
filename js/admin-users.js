@@ -118,7 +118,7 @@ function renderTable() {
       <td>${escapeHtml(u.email)}</td>
       <td>${roleBadge(u.role)}</td>
       <td>${escapeHtml(u.branch)}</td>
-      <td><span class="status-cell">${statusDot(u.status)}</span></td>
+      <td>${statusBadge(u.status)}</td>
       <td>
         <div class="action-menu-wrap">
           <button class="btn-action-dots" onclick="toggleActionMenu(event, ${start + i})" title="Actions">
@@ -253,10 +253,9 @@ function roleBadge(role) {
   return `<span class="badge ${cls}">${label}</span>`;
 }
 
-function statusDot(status) {
+function statusBadge(status) {
   const normalized = normalizeUserStatus(status);
-  const cls = normalized === "active" ? "dot-active" : "dot-inactive";
-  return `<span class="status-dot ${cls}"></span> ${normalized === "active" ? "Active" : "Inactive"}`;
+  return `<span class="status-badge ${normalized === "active" ? "status-active" : "status-inactive"}">${normalized.toUpperCase()}</span>`;
 }
 
 function showTableMessage(message) {
