@@ -3,19 +3,6 @@ const ROUTES = {
   admin: "admin/admin-dashboard.html",
 };
 
-const LOCAL_USERS = {
-  admin: {
-    email: "admin@bedjocleaner.com",
-    role: "admin",
-    name: "Admin",
-  },
-  operator: {
-    email: "operator@bedjocleaner.com",
-    role: "operator",
-    name: "Operator",
-  },
-};
-
 const usernameInput = document.getElementById("username");
 const passwordInput = document.getElementById("password");
 const btnLogin = document.getElementById("btn-login");
@@ -43,28 +30,13 @@ async function doLogin() {
   btnLogin.disabled = true;
   btnLogin.textContent = "Loading...";
 
-  const localUser = LOCAL_USERS[identifier.toLowerCase()];
-
-  if (localUser) {
-    saveSession({
-      user_id: identifier.toLowerCase(),
-      username: identifier.toLowerCase(),
-      email: localUser.email,
-      role: localUser.role,
-      name: localUser.name,
-    });
-
-    window.location.href = ROUTES[localUser.role];
-    return;
-  }
-
   const { data, error } = await supabaseClient.auth.signInWithPassword({
     email: identifier,
     password,
   });
 
   if (error) {
-    loginError.textContent = "Login gagal. Gunakan email terdaftar, atau username admin/operator.";
+    loginError.textContent = "Login gagal. Gunakan email dan password akun Supabase yang terdaftar.";
     resetBtn();
     return;
   }

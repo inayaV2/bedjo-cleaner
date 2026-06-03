@@ -818,9 +818,7 @@ async function saveOrderToSupabase() {
     window.location.href = "order-output.html?id=" + order.id;
   } catch (error) {
     console.error("SAVE ORDER ERROR:", error);
-    saveOrderLocally();
-    alert("Supabase belum merespons, jadi order disimpan lokal di browser dulu.");
-    window.location.href = "order-output.html";
+    alert("Gagal menyimpan order ke Supabase. Order tidak disimpan lokal agar data produksi tetap konsisten.");
   } finally {
     btnSave.disabled = false;
     btnSave.textContent = isEditMode ? "Update Order" : "Save";
@@ -1236,42 +1234,6 @@ function buildPaymentPayload(totalAmount) {
     paid_amount: paidAmount,
     status: nextStatus,
   };
-}
-
-function saveOrderLocally() {
-  const orderCode = generateOrderCode();
-  const customerName = document.getElementById("fCustomer").value.trim();
-  const customerEmail = document.getElementById("fEmail").value.trim();
-  const customerPhone = document.getElementById("fWa").value.trim();
-  const totalAmount = items.reduce((sum, item) => sum + (Number(item.qty || 1) * (parsePrice(item.price) || parsePrice(catalogEntry(item)?.price) || SERVICE_PRICE_FALLBACK[normalizeLookup(item.service)] || 20000)), 0);
-
-  const localOrder = {
-    id: orderCode,
-    order_code: orderCode,
-    customer: customerName,
-    phone: customerPhone,
-    wa: customerPhone,
-    email: customerEmail,
-    status: selectedStatus || "pending",
-    total_amount: totalAmount,
-    date: new Date().toISOString(),
-    items: items.map(item => ({ ...item })),
-    payment_method: selectedPayment,
-  };
-
-  const localOrders = getLocalOrders();
-  localOrders.unshift(localOrder);
-
-  localStorage.setItem("bc_local_orders", JSON.stringify(localOrders));
-  sessionStorage.setItem("bc_saved_order", JSON.stringify(localOrder));
-}
-
-function getLocalOrders() {
-  try {
-    return JSON.parse(localStorage.getItem("bc_local_orders")) || [];
-  } catch {
-    return [];
-  }
 }
 
 function getSession() {
