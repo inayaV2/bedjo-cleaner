@@ -155,8 +155,6 @@ function openEdit(index) {
   const u = filteredUsers[index];
   if (!u) return;
   setInput("editIndex", index);
-  setInput("editFullName", u.fullName);
-  setInput("editUsername", u.username);
   setInput("editEmail", u.email);
   setInput("editRole", u.role);
   setInput("editBranch", u.branch_id);
@@ -168,8 +166,6 @@ async function saveEditUser() {
   const u = filteredUsers[Number(value("editIndex"))];
   if (!u) return;
   const payload = {
-    full_name: value("editFullName"),
-    username: value("editUsername"),
     email: value("editEmail"),
     role: normalizeRole(value("editRole")),
     branch_id: value("editBranch"),
