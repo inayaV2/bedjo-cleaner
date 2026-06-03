@@ -51,6 +51,7 @@ async function loadOrder() {
     return;
   }
 
+  await hydrateOrderBranch(order);
   orderPhotos = await fetchOrderPhotos(order.id);
   subscribeOrderPhotos(order.id);
   renderOrder();
@@ -66,7 +67,8 @@ async function fetchOrderDetail(value) {
       status,
       branch_id,
       created_at,
-      branches (
+      branches:branch_id (
+        id,
         name
       ),
       order_items (
@@ -127,6 +129,22 @@ function runOrderDetailQuery(value, selectClause) {
   return query;
 }
 
+async function hydrateOrderBranch(row) {
+  if (!row?.branch_id || row.branches?.name) return;
+  const { data, error } = await supabaseClient
+    .from("branches")
+    .select("id, name")
+    .eq("id", row.branch_id)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("Gagal fetch branch order detail:", error);
+    return;
+  }
+
+  row.branches = data || null;
+}
+
 function renderLoading() {
   ["iName", "iWa", "iEmail", "iService", "iBranch", "iNote", "iPayment", "iPayStatus", "iAmount", "iPaidAmount"].forEach(id => setText(id, "Memuat..."));
   setText("iColor", "Memuat...");
@@ -156,7 +174,8 @@ function renderOrder() {
   setText("iWa", order.customer_phone || "-");
   setText("iEmail", order.customer_email || "-");
   setText("iService", serviceNames(order));
-  setText("iBranch", displayBranchName(order.branches?.name || order.branch_id));
+  console.log("order detail branch", order.branch_id, order.branches);
+  setText("iBranch", orderBranchName(order));
   setText("iNote", notes(order));
   const colorText = colors(order);
   setColorVisibility(Boolean(colorText && colorText !== "-"));
@@ -527,13 +546,8 @@ function colors(row) {
   return (row.order_items || []).map(item => item.color).filter(Boolean).join(", ") || "-";
 }
 
-function displayBranchName(value) {
-  return normalizeBranchName(value) || "-";
-}
-
-function normalizeBranchName(name) {
-  const raw = String(name || "").trim().toLowerCase();
-  return ALLOWED_BRANCH_NAMES.find(branch => branch.toLowerCase() === raw) || "";
+function orderBranchName(row) {
+  return row?.branches?.name || row?.branch?.name || "-";
 }
 
 function normalizeLookup(value) {
