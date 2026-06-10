@@ -188,6 +188,7 @@ function renderTable() {
           <div class="act-btns">
             <button class="act-btn" title="View Detail" onclick="goDetail('${order.id}')">View</button>
             <button class="act-btn" title="Edit Order" onclick="goEdit('${order.id}')">Edit</button>
+            <button class="act-btn act-btn-delete" title="Delete Order" onclick="deleteOrderFromList('${order.id}', this)">Delete</button>
           </div>
         </td>
       </tr>
@@ -257,7 +258,7 @@ async function loadCurrentProfile() {
 
   const { data, error } = await supabaseClient
     .from("profiles")
-    .select("id, role, branch_id")
+    .select("id, email, role, branch_id")
     .eq("id", userId)
     .maybeSingle();
 
@@ -315,6 +316,37 @@ function goDetail(id) {
 
 function goEdit(id) {
   window.location.href = `order-create.html?edit=${encodeURIComponent(id)}`;
+}
+
+async function deleteOrderFromList(id, button) {
+  if (!window.confirm(window.BedjoOrderDelete?.confirmMessage || "Yakin ingin menghapus order ini?")) return;
+  if (!window.BedjoOrderDelete) {
+    alert("Fitur hapus order belum siap.");
+    return;
+  }
+
+  const originalText = button?.textContent || "Delete";
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Deleting...";
+  }
+
+  try {
+    await window.BedjoOrderDelete.deleteOrder(id, {
+      profile: currentProfile,
+      session,
+    });
+    alert("Order berhasil dihapus");
+    await loadOrders();
+  } catch (error) {
+    console.error("Delete order error:", error);
+    alert("Gagal menghapus order: " + (error?.message || error));
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+  }
 }
 
 function initShell() {

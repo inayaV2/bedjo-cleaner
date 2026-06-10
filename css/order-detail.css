@@ -234,6 +234,28 @@
 }
 .btn-update-status:hover { background: var(--blue-hover); }
 
+.btn-delete-order {
+  height: 44px;
+  padding: 0 28px;
+  border: 1px solid #DC2626;
+  border-radius: 999px;
+  background: #FFFFFF;
+  color: #DC2626;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-delete-order:hover {
+  background: #FEE2E2;
+}
+
+.btn-delete-order:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 /* ── Toast ── */
 .toast-msg {
   position: fixed;

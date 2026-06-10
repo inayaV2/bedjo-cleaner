@@ -159,6 +159,17 @@
   transition: color .15s, background .15s;
 }
 .act-btn:hover { color: #2148C0; background: #E8EEFF; }
+.act-btn-delete {
+  color: #DC2626;
+}
+.act-btn-delete:hover {
+  color: #B91C1C;
+  background: #FEE2E2;
+}
+.act-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
 
 /* ── Pagination ── */
 .pagination-row {

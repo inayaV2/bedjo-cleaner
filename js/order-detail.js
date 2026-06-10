@@ -219,6 +219,7 @@ function renderQr() {
 }
 
 document.getElementById("btnUpdate")?.addEventListener("click", updateStatus);
+document.getElementById("btnDeleteOrder")?.addEventListener("click", deleteCurrentOrder);
 document.getElementById("btnDlQR")?.addEventListener("click", () => {
   const canvas = document.querySelector("#qrContainer canvas");
   const img = document.querySelector("#qrContainer img");
@@ -374,6 +375,40 @@ function initPhotoUpload() {
       showToast(`${uploadedCount} foto item berhasil diupload.`);
     }
   });
+}
+
+async function deleteCurrentOrder() {
+  if (!order?.id) {
+    showToast("Data order belum siap.");
+    return;
+  }
+  if (!window.confirm(window.BedjoOrderDelete?.confirmMessage || "Yakin ingin menghapus order ini?")) return;
+  if (!window.BedjoOrderDelete) {
+    showToast("Fitur hapus order belum siap.");
+    return;
+  }
+
+  const button = document.getElementById("btnDeleteOrder");
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Deleting...";
+  }
+
+  try {
+    await window.BedjoOrderDelete.deleteOrder(order.id, {
+      profile: currentProfile,
+      session,
+    });
+    alert("Order berhasil dihapus");
+    window.location.replace("orders.html");
+  } catch (error) {
+    console.error("Delete order detail error:", error);
+    alert("Gagal menghapus order: " + (error?.message || error));
+    if (button) {
+      button.disabled = false;
+      button.textContent = "Delete Order";
+    }
+  }
 }
 
 async function removeOrderPhoto(index) {
@@ -643,7 +678,7 @@ async function loadCurrentProfile() {
 
   const { data, error } = await supabaseClient
     .from("profiles")
-    .select("id, role, branch_id")
+    .select("id, email, role, branch_id")
     .eq("id", userId)
     .maybeSingle();
 
