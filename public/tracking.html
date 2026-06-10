@@ -3,15 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bedjo Cleaner – Track Order</title>
-  <link rel="stylesheet" href="../css/tracking.css?v=20260527-9" />
+  <title>Bedjo Cleaner - Track Order</title>
+  <link rel="stylesheet" href="../css/tracking.css?v=20260610-1" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
 </head>
 <body>
-
-  <!-- HEADER -->
   <header class="app-header">
     <div class="header-inner">
       <img src="../assets/logo.png" alt="Bedjo Cleaner Logo" class="header-logo" onerror="this.style.display='none'" />
@@ -19,7 +17,6 @@
     </div>
   </header>
 
-  <!-- MAIN CONTENT -->
   <main class="main-content">
     <form class="tracking-search-card" id="tracking-form">
       <label for="tracking-input">Cari pesanan</label>
@@ -29,62 +26,82 @@
       </div>
     </form>
 
-    <!-- Loading State -->
     <div id="loading-state" class="state-card hidden">
       <div class="spinner"></div>
       <p class="state-text">Memuat data order...</p>
     </div>
 
-    <!-- Error State -->
     <div id="error-state" class="state-card hidden">
-      <div class="state-icon error-icon">✕</div>
+      <div class="state-icon error-icon">x</div>
       <p class="state-title">Order tidak ditemukan</p>
       <p class="state-text">Pastikan link atau QR code yang kamu scan sudah benar.</p>
     </div>
 
-    <!-- Order Card -->
     <div id="order-card" class="card hidden">
-
-      <!-- Customer & Status -->
       <div class="order-header">
         <div class="avatar" id="avatar-initials">B</div>
         <div class="order-meta">
-          <p class="customer-name" id="customer-name">–</p>
-          <p class="order-id" id="order-id">Order ID: #–</p>
+          <p class="customer-name" id="customer-name">-</p>
+          <p class="order-id" id="order-id">Order ID: #-</p>
         </div>
-        <span class="status-badge" id="status-badge">–</span>
+        <span class="status-badge" id="status-badge">-</span>
       </div>
 
       <div class="divider"></div>
 
-      <!-- Date & Service -->
       <div class="info-row">
         <span class="info-label">Tanggal</span>
-        <span class="info-value" id="order-date">–</span>
+        <span class="info-value" id="order-date">-</span>
       </div>
       <div class="info-row">
         <span class="info-label">Jenis layanan</span>
-        <span class="info-value" id="service-type">–</span>
+        <span class="info-value" id="service-type">-</span>
       </div>
       <div class="info-row">
         <span class="info-label">No. HP</span>
-        <span class="info-value" id="customer-phone">–</span>
+        <span class="info-value" id="customer-phone">-</span>
       </div>
 
       <div class="divider"></div>
 
-      <!-- Order Information -->
       <p class="section-title">Informasi Order</p>
       <div class="info-row">
-        <span class="info-label">Jenis item</span>
-        <span class="info-value" id="item-type">–</span>
+        <span class="info-label">Cabang</span>
+        <span class="info-value" id="branch-name">-</span>
       </div>
       <div class="info-row">
-        <span class="info-label">Payment status</span>
-        <span class="info-value" id="payment-status">–</span>
+        <span class="info-label">Jenis item</span>
+        <span class="info-value" id="item-type">-</span>
       </div>
 
-      <!-- Item Photo -->
+      <div class="order-items-list" id="order-items-list">
+        <div class="order-item-empty">Detail item belum tersedia.</div>
+      </div>
+
+      <div class="payment-summary">
+        <p class="payment-summary-title">Ringkasan Pembayaran</p>
+        <div class="info-row">
+          <span class="info-label">Total biaya</span>
+          <span class="info-value" id="order-total">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Jumlah dibayar</span>
+          <span class="info-value" id="paid-amount">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Sisa pembayaran</span>
+          <span class="info-value" id="remaining-amount">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Payment method</span>
+          <span class="info-value" id="payment-method">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Payment status</span>
+          <span class="info-value" id="payment-status">-</span>
+        </div>
+      </div>
+
       <div class="photo-block">
         <p class="photo-label">Foto item:</p>
         <div class="photo-wrapper">
@@ -105,23 +122,17 @@
         </div>
       </div>
 
-      <!-- Note -->
       <div class="note-block">
         <p class="photo-label">Catatan:</p>
-        <p class="note-text" id="order-note">–</p>
+        <p class="note-text" id="order-note">-</p>
       </div>
 
       <div class="divider"></div>
 
-      <!-- Progress Timeline -->
       <p class="section-title">Status Pengerjaan</p>
-      <div class="timeline" id="timeline">
-        <!-- Filled by JS -->
-      </div>
-
+      <div class="timeline" id="timeline"></div>
     </div>
 
-    <!-- Help Card -->
     <div class="card help-card" id="help-card">
       <div class="help-left">
         <p class="help-title">Butuh bantuan?</p>
@@ -134,12 +145,11 @@
         WhatsApp
       </a>
     </div>
-
   </main>
 
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script defer src="../js/supabase.js?v=20260527-9"></script>
-  <script defer src="../js/app-config.js?v=20260527-9"></script>
-  <script defer src="../js/tracking.js?v=20260527-9"></script>
+  <script defer src="../js/supabase.js?v=20260610-1"></script>
+  <script defer src="../js/app-config.js?v=20260610-1"></script>
+  <script defer src="../js/tracking.js?v=20260610-1"></script>
 </body>
 </html>

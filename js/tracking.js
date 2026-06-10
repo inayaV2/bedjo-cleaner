@@ -81,26 +81,29 @@ async function loadOrder(value) {
   console.log("fetched order:", order);
   console.log("tracking order:", order);
 
-  const [orderItems, payments, orderPhotos, paymentProofs] = await Promise.all([
+  const [orderItems, payments, branch, orderPhotos, paymentProofs] = await Promise.all([
     fetchOrderItems(order.id),
     fetchPayments(order.id),
+    fetchBranch(order.branch_id),
     fetchOrderPhotos(order.id),
     fetchPaymentProofs(order.id),
   ]);
 
   console.log("fetched order_items:", orderItems);
   console.log("fetched payments:", payments);
+  console.log("fetched branch:", branch);
   console.log("fetched order_photos:", orderPhotos);
   console.log("fetched payment_proofs:", paymentProofs);
 
   subscribeTrackingMedia(order);
-  renderTracking(order, orderItems, payments, orderPhotos, paymentProofs);
-  requestAnimationFrame(() => renderTracking(order, orderItems, payments, orderPhotos, paymentProofs));
+  renderTracking(order, orderItems, payments, branch, orderPhotos, paymentProofs);
+  requestAnimationFrame(() => renderTracking(order, orderItems, payments, branch, orderPhotos, paymentProofs));
 }
 
-function renderTracking(order, orderItems = [], payments = [], photos = [], proofs = []) {
+function renderTracking(order, orderItems = [], payments = [], branch = null, photos = [], proofs = []) {
   order.order_items = orderItems || [];
   order.payments = payments || [];
+  order.branches = branch || null;
   order.order_photos = photos || [];
   order.payment_proofs = proofs || [];
   console.log("tracking order_items:", order.order_items);
@@ -118,10 +121,27 @@ async function fetchTrackingOrder(orderCode) {
       customer_phone,
       status,
       branch_id,
+      total_amount,
       created_at
     `)
     .eq("order_code", orderCode)
     .maybeSingle();
+}
+
+async function fetchBranch(branchId) {
+  if (!branchId) return null;
+  const { data, error } = await supabaseClient
+    .from("branches")
+    .select("id, name")
+    .eq("id", branchId)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("Tracking branch fetch error:", error);
+    return null;
+  }
+
+  return data || null;
 }
 
 async function fetchOrderItems(orderId) {
@@ -149,7 +169,7 @@ async function attachServices(items) {
 
   const { data, error } = await supabaseClient
     .from("services")
-    .select("id, name, price, category")
+    .select("id, name, price, category, description")
     .in("id", serviceIds);
 
   if (error) {
@@ -204,10 +224,13 @@ function renderOrder(order) {
   setManyText(["service-type", "serviceType", "iServiceType", "tracking-service-type"], renderedServiceType);
   setManyText(["item-type", "itemType", "iItemType", "tracking-item-type"], renderedItemType);
   setManyText(["payment-status", "paymentStatus", "iPaymentStatus", "tracking-payment-status"], renderedPaymentStatus);
+  setText("branch-name", order.branches?.name || "-");
   setValueByLabel("Jenis layanan", renderedServiceType);
   setValueByLabel("Jenis item", renderedItemType);
   setValueByLabel("Payment status", renderedPaymentStatus);
   setText("order-note", notes(order));
+  renderOrderItems(order.order_items || []);
+  renderPaymentSummary(order, payment);
   console.log("rendered service type:", renderedServiceType);
   console.log("rendered item type:", renderedItemType);
   console.log("rendered payment status:", renderedPaymentStatus);
@@ -236,6 +259,164 @@ function renderOrder(order) {
   errorEl?.classList.add("hidden");
   orderCardEl?.classList.remove("hidden");
   helpCardEl?.classList.remove("hidden");
+}
+
+function renderOrderItems(items) {
+  const container = document.getElementById("order-items-list");
+  if (!container) return;
+
+  if (!items.length) {
+    container.innerHTML = `<div class="order-item-empty">Detail item belum tersedia.</div>`;
+    return;
+  }
+
+  container.innerHTML = items.map((item, index) => {
+    const itemType = cleanValue(item.item_type || item.item_name || item.name);
+    const service = itemServiceLabel(item, itemType);
+    const variant = itemVariant(item);
+    const quantity = positiveNumber(item.quantity, 1);
+    const unitPrice = itemUnitPrice(item);
+    const subtotal = itemSubtotal(item, unitPrice, quantity);
+    const note = itemNote(item);
+    const title = [service, variant].filter(value => value !== "-").join(" - ") || itemType;
+
+    return `
+      <article class="order-item-detail">
+        <p class="order-item-number">Item ${index + 1}</p>
+        <p class="order-item-title">${escapeHtml(title)}</p>
+        <dl class="order-item-fields">
+          <div><dt>Jenis item</dt><dd>${escapeHtml(itemType)}</dd></div>
+          <div><dt>Layanan</dt><dd>${escapeHtml(service)}</dd></div>
+          <div><dt>Variant</dt><dd>${escapeHtml(variant)}</dd></div>
+          <div><dt>Qty</dt><dd>${quantity} x ${escapeHtml(formatRupiah(unitPrice, "-"))}</dd></div>
+          <div><dt>Subtotal</dt><dd>${escapeHtml(formatRupiah(subtotal, "-"))}</dd></div>
+          ${note !== "-" ? `<div class="order-item-note"><dt>Catatan</dt><dd>${escapeHtml(note)}</dd></div>` : ""}
+        </dl>
+      </article>
+    `;
+  }).join("");
+}
+
+function renderPaymentSummary(order, payment) {
+  const itemsTotal = calculateItemsTotal(order.order_items || []);
+  const paymentAmount = numericValue(payment?.amount);
+  const orderAmount = numericValue(order.total_amount);
+  const total = itemsTotal > 0
+    ? itemsTotal
+    : paymentAmount !== null
+      ? paymentAmount
+      : orderAmount;
+  const paid = payment ? (numericValue(payment.paid_amount) ?? 0) : null;
+  const remaining = total === null || paid === null ? null : Math.max(total - paid, 0);
+
+  setText("order-total", formatRupiah(total));
+  setText("paid-amount", formatRupiah(paid));
+  setText("remaining-amount", formatRupiah(remaining));
+  setText("payment-method", paymentMethodText(payment?.method));
+  setText("payment-status", finalPaymentStatus(order, payment));
+}
+
+function calculateItemsTotal(items) {
+  return (items || []).reduce((sum, item) => {
+    const quantity = positiveNumber(item.quantity, 1);
+    const unitPrice = itemUnitPrice(item);
+    const subtotal = itemSubtotal(item, unitPrice, quantity);
+    return sum + (subtotal || 0);
+  }, 0);
+}
+
+function itemServiceLabel(item, itemType) {
+  const relationName = cleanValue(item.services?.name);
+  const relationBase = relationName === "-" ? "" : relationName.split(" - ")[0].trim();
+  let service = cleanValue(
+    item.service_type ||
+    item.service_name ||
+    item.service ||
+    serviceFromNotes(item.notes || item.note) ||
+    relationBase
+  );
+
+  if (service !== "-" && itemType !== "-") {
+    const normalizedService = normalizeLabel(service);
+    const normalizedItem = normalizeLabel(itemType);
+    if (!normalizedService.includes(normalizedItem)) service = `${service} ${itemType}`;
+  }
+
+  return service;
+}
+
+function itemVariant(item) {
+  const direct = cleanValue(item.variant || variantFromNotes(item.notes || item.note));
+  if (direct !== "-") return direct;
+  const serviceName = String(item.services?.name || "");
+  const parts = serviceName.split(" - ");
+  return cleanValue(parts.length > 1 ? parts.slice(1).join(" - ") : "");
+}
+
+function itemUnitPrice(item) {
+  const direct = numericValue(item.price);
+  if (direct !== null) return direct;
+  const servicePrice = numericValue(item.services?.price);
+  if (servicePrice !== null) return servicePrice;
+  const subtotal = numericValue(item.subtotal);
+  const quantity = positiveNumber(item.quantity, 1);
+  return subtotal !== null ? subtotal / quantity : null;
+}
+
+function itemSubtotal(item, unitPrice, quantity) {
+  const stored = numericValue(item.subtotal);
+  return stored !== null ? stored : (unitPrice === null ? null : unitPrice * quantity);
+}
+
+function itemNote(item) {
+  return cleanValue(
+    String(item.notes || item.note || "")
+      .replace(/\[service_type:[^\]]+\]\s*/ig, "")
+      .replace(/\[variant:[^\]]+\]\s*/ig, "")
+      .trim()
+  );
+}
+
+function paymentMethodText(method) {
+  const normalized = normalizeStatus(method);
+  if (normalized === "cod" || normalized === "cash") return "Cash";
+  if (normalized === "transfer" || normalized === "bank_transfer") return "Transfer";
+  if (["ewallet", "e_wallet", "qris"].includes(normalized)) return "E-wallet";
+  return cleanValue(method);
+}
+
+function formatRupiah(value, fallback = "-") {
+  const number = numericValue(value);
+  return number === null ? fallback : `Rp ${Math.round(number).toLocaleString("id-ID")}`;
+}
+
+function numericValue(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function positiveNumber(value, fallback) {
+  const number = numericValue(value);
+  return number !== null && number > 0 ? number : fallback;
+}
+
+function cleanValue(value) {
+  const text = String(value ?? "").trim();
+  return text && text.toLowerCase() !== "null" && text.toLowerCase() !== "undefined" ? text : "-";
+}
+
+function variantFromNotes(note) {
+  return String(note || "").match(/\[variant:([^\]]+)\]/i)?.[1]?.trim() || "";
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 async function fetchPaymentProofs(orderId) {
@@ -399,7 +580,7 @@ function finalItemType(orderItems) {
 
 function finalServiceType(orderItems) {
   const values = (orderItems || [])
-    .map(item => item.service_type || serviceFromNotes(item.notes || item.note))
+    .map(serviceValue)
     .filter(Boolean);
   return [...new Set(values)].join(", ") || "-";
 }
@@ -414,16 +595,21 @@ function finalPaymentStatus(order, payment) {
 }
 
 function notes(order) {
-  return (order.order_items || []).map(item => stripServiceFromNotes(item.notes)).filter(Boolean).join(", ") || "-";
+  return (order.order_items || [])
+    .map(itemNote)
+    .filter(value => value && value !== "-")
+    .join(", ") || "-";
 }
 
 function serviceFromNotes(note) {
-  return String(note || "").match(/^\[service_type:([^\]]+)\]/i)?.[1]?.trim() || "";
+  return String(note || "").match(/\[service_type:([^\]]+)\]/i)?.[1]?.trim() || "";
 }
 
 function serviceValue(item) {
   return item.service_type ||
     item.service_name ||
+    item.service ||
+    item.services?.name ||
     serviceFromNotes(item.notes || item.note);
 }
 
