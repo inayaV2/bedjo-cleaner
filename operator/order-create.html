@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/operator-dashboard.css?v=20260528-9" />
-  <link rel="stylesheet" href="../css/order-create.css?v=20260528-9" />
+  <link rel="stylesheet" href="../css/order-create.css?v=20260610-1" />
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     window.BC_EDIT_ORDER_ID = new URLSearchParams(window.location.search).get("edit");
@@ -20,7 +20,7 @@
   <script defer src="../js/supabase.js?v=20260528-2"></script>
   <script defer src="../js/notification-helper.js?v=20260528-2"></script>
   <script defer src="../js/auth-guard.js?v=20260528-2"></script>
-  <script defer src="../js/order-create.js?v=20260603-1"></script>
+  <script defer src="../js/order-create.js?v=20260610-1"></script>
 </head>
 <body>
 
@@ -143,19 +143,10 @@
               <span class="err-msg" id="errEmail"></span>
             </div>
             <div class="form-group">
-              <label>Select Branch</label>
-              <div class="fselect-wrap" id="branchWrap">
-                <div class="fselect-display" id="branchDisplay">
-                  <span id="branchText">Choose branch</span>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-                </div>
-                <div class="fselect-dropdown" id="branchDropdown">
-                  <div class="fselect-opt" data-val="BEC"><span class="opt-title">BEC</span></div>
-                  <div class="fselect-opt" data-val="Ciwalk"><span class="opt-title">Ciwalk</span></div>
-                  <div class="fselect-opt" data-val="PVJ"><span class="opt-title">PVJ</span></div>
-                  <div class="fselect-opt" data-val="TSM"><span class="opt-title">TSM</span></div>
-                  <div class="fselect-opt" data-val="BTC"><span class="opt-title">BTC</span></div>
-                </div>
+              <label>Branch</label>
+              <div class="branch-readonly" id="branchDisplay" aria-live="polite">
+                <span class="branch-readonly-label">Branch:</span>
+                <strong id="branchText">Loading...</strong>
               </div>
             </div>
           </div>

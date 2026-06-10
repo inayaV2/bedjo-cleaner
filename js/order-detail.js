@@ -255,17 +255,23 @@ async function updateStatus() {
     btn.textContent = "Updating...";
   }
 
-  const { error } = await supabaseClient
+  let updateQuery = supabaseClient
     .from("orders")
     .update({ status: rawStatus })
     .eq("id", order.id);
+
+  if (isOperatorScoped()) {
+    updateQuery = updateQuery.eq("branch_id", currentProfile.branch_id);
+  }
+
+  const { data: updatedOrder, error } = await updateQuery.select("id").maybeSingle();
 
   if (btn) {
     btn.disabled = false;
     btn.textContent = "Update Status";
   }
 
-  if (error) {
+  if (error || !updatedOrder) {
     console.error("Error update order status:", error);
     showToast("Gagal update status.");
     return;

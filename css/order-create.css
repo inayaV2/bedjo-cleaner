@@ -138,6 +138,23 @@
 .opt-title { display: block; font-size: 0.9rem; font-weight: 700; color: var(--dark); }
 .opt-sub   { display: block; font-size: 0.78rem; color: var(--muted); margin-top: 1px; }
 
+.branch-readonly {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 40px;
+  border: 1px solid #E5E7EB;
+  border-radius: 6px;
+  background: #F9FAFB;
+  padding: 0 14px;
+  font-size: 0.9rem;
+  color: var(--dark);
+}
+
+.branch-readonly-label {
+  color: var(--muted);
+}
+
 /* ── Items section ── */
 .items-section {
   display: flex;

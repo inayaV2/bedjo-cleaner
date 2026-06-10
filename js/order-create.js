@@ -24,6 +24,7 @@ let editPayment = null;
 let supportsServiceTypeColumn = true;
 let availableServices = [];
 let currentProfile = null;
+let currentBranchName = "";
 const SERVICES_CATALOG = [
   { item_type: "Shoes", service_category: "Regular Clean", variant: "Canvas", price: 45000 },
   { item_type: "Shoes", service_category: "Regular Clean", variant: "Leather", price: 60000 },
@@ -92,8 +93,6 @@ const SERVICE_PRICE_FALLBACK = {
   "bag cleaning": 22000,
   "tas cleaning": 22000,
 };
-const ALLOWED_BRANCH_NAMES = ["BEC", "Ciwalk", "PVJ", "TSM", "BTC"];
-
 function renderItems() {
   const container = document.getElementById("itemsSection");
   if (!container) return;
@@ -357,40 +356,38 @@ function bindSelectOptions(drop, textEl, onSelect) {
 }
 
 function setupFormSelects() {
-  setupSelect("branchWrap", "branchDropdown", "branchText", v => selectedBranch = v);
   setupSelect("paymentWrap", "paymentDropdown", "paymentText", v => selectedPayment = v);
   setupSelect("statusWrap", "statusDropdown", "statusText", v => selectedStatus = v);
 }
 
 async function loadBranches() {
+  const textEl = document.getElementById("branchText");
+  const branchId = currentProfile?.branch_id || "";
+  selectedBranch = branchId;
+  currentBranchName = "";
+
+  if (!isUuid(branchId)) {
+    if (textEl) textEl.textContent = "Belum diset";
+    return;
+  }
+
   try {
     const { data, error } = await withTimeout(
       supabaseClient
         .from("branches")
-        .select("*")
-        .order("name", { ascending: true }),
+        .select("id, name")
+        .eq("id", branchId)
+        .maybeSingle(),
       "Memuat branch terlalu lama.",
       8000
     );
 
     if (error) throw error;
-
-    const drop = document.getElementById("branchDropdown");
-    const textEl = document.getElementById("branchText");
-    if (!drop) return;
-    const branchOptions = uniqueAllowedBranchRecords(data);
-    const source = branchOptions.length ? branchOptions : fallbackBranches();
-
-    drop.innerHTML = source.map(branch => `
-      <div class="fselect-opt" data-val="${escapeAttr(branch.id)}">
-        <span class="opt-title">${escapeHtml(branch.name)}</span>
-      </div>
-    `).join("");
-
-    bindSelectOptions(drop, textEl, v => selectedBranch = v);
-    if (selectedBranch) setCustomSelect("branchDropdown", "branchText", selectedBranch, branchNameByValue(selectedBranch) || "Choose branch");
+    currentBranchName = data?.name || "";
+    if (textEl) textEl.textContent = currentBranchName || "Branch operator";
   } catch (error) {
-    console.warn("Gagal memuat branches, fallback ke opsi statis:", error);
+    console.warn("Gagal memuat branch operator:", error);
+    if (textEl) textEl.textContent = "Branch operator";
   }
 }
 
@@ -714,8 +711,8 @@ async function saveOrderToSupabase() {
   }
 
   if (!validate()) return;
-  if (isOperatorScoped()) selectedBranch = currentProfile?.branch_id || "";
-  if (isOperatorScoped() && !selectedBranch) return alert("Branch operator belum diset.");
+  selectedBranch = currentProfile?.branch_id || "";
+  if (!isUuid(selectedBranch)) return alert("Branch operator belum diset atau tidak valid.");
 
   const btnSave = document.getElementById("btnSave");
   btnSave.disabled = true;
@@ -737,16 +734,12 @@ async function saveOrderToSupabase() {
       customer_phone: customerPhone,
       status: selectedStatus || "pending",
       total_amount: totalAmount,
-      qr_data: orderCode
+      qr_data: orderCode,
+      branch_id: selectedBranch,
     };
 
     if (isUuid(session.user_id)) {
       orderPayload.operator_id = session.user_id;
-    }
-
-    // Branch dari Supabase memakai UUID; fallback statis hanya untuk menjaga UI tetap bisa dibuka.
-    if (isUuid(selectedBranch)) {
-      orderPayload.branch_id = selectedBranch;
     }
 
     const { data: order, error: orderError } = await withTimeout(
@@ -882,7 +875,7 @@ async function loadEditOrder() {
 }
 
 async function fetchEditOrder(orderId) {
-  const withBranch = await supabaseClient
+  let withBranchQuery = supabaseClient
     .from("orders")
     .select(`
       id,
@@ -897,18 +890,28 @@ async function fetchEditOrder(orderId) {
         name
       )
     `)
-    .eq("id", orderId)
-    .single();
+    .eq("id", orderId);
+
+  if (isOperatorScoped()) {
+    withBranchQuery = withBranchQuery.eq("branch_id", currentProfile.branch_id);
+  }
+
+  const withBranch = await withBranchQuery.single();
 
   if (!withBranch.error) return withBranch.data;
 
   console.log("error Supabase:", withBranch.error);
   console.warn("Retry fetch order without branches relation:", withBranch.error);
-  const plain = await supabaseClient
+  let plainQuery = supabaseClient
     .from("orders")
     .select("*")
-    .eq("id", orderId)
-    .single();
+    .eq("id", orderId);
+
+  if (isOperatorScoped()) {
+    plainQuery = plainQuery.eq("branch_id", currentProfile.branch_id);
+  }
+
+  const plain = await plainQuery.single();
 
   if (plain.error) {
     console.log("error Supabase:", plain.error);
@@ -973,11 +976,11 @@ function fillEditForm(order, orderItems, payment) {
   setInputValue("fEmail", order.customer_email || "");
   setInputValue("fWa", order.customer_phone || "");
 
-  selectedBranch = order.branch_id || "";
+  selectedBranch = currentProfile?.branch_id || "";
   selectedPayment = payment?.method || "";
   selectedStatus = normalizeStatus(order.status || "pending");
 
-  setCustomSelect("branchDropdown", "branchText", selectedBranch, branchNameByValue(selectedBranch) || normalizeBranchName(order.branches?.name) || "Choose branch");
+  setText("branchText", currentBranchName || order.branches?.name || "Branch operator");
   setCustomSelect("paymentDropdown", "paymentText", selectedPayment, null);
   setCustomSelect("statusDropdown", "statusText", selectedStatus, null);
   supportsServiceTypeColumn = supportsServiceTypeColumn || orderItems.some(item => Object.prototype.hasOwnProperty.call(item, "service_type"));
@@ -1002,8 +1005,11 @@ function fillEditForm(order, orderItems, payment) {
 
 async function updateOrderToSupabase() {
   if (!validate()) return;
-  if (isOperatorScoped()) selectedBranch = currentProfile?.branch_id || "";
-  if (isOperatorScoped() && !selectedBranch) return alert("Branch operator belum diset.");
+  const profileBranchId = currentProfile?.branch_id || "";
+  if (!isUuid(profileBranchId)) return alert("Branch operator belum diset atau tidak valid.");
+  if (editOrder?.branch_id !== profileBranchId) {
+    return alert("Order ini bukan milik branch operator yang sedang login.");
+  }
 
   const btnSave = document.getElementById("btnSave");
   if (btnSave) {
@@ -1026,19 +1032,22 @@ async function updateOrderToSupabase() {
       total_amount: totalAmount,
     };
 
-    if (isUuid(selectedBranch)) {
-      orderPayload.branch_id = selectedBranch;
+    let updateQuery = supabaseClient
+      .from("orders")
+      .update(orderPayload)
+      .eq("id", editOrderId);
+
+    if (isOperatorScoped()) {
+      updateQuery = updateQuery.eq("branch_id", profileBranchId);
     }
 
-    const { error: orderError } = await withTimeout(
-      supabaseClient
-        .from("orders")
-        .update(orderPayload)
-        .eq("id", editOrderId),
+    const { data: updatedOrder, error: orderError } = await withTimeout(
+      updateQuery.select("id").maybeSingle(),
       "Mengupdate order terlalu lama. Cek koneksi atau konfigurasi Supabase."
     );
 
     if (orderError) throw orderError;
+    if (!updatedOrder) throw new Error("Order tidak ditemukan pada branch operator.");
 
     const { error: deleteItemsError } = await withTimeout(
       supabaseClient
@@ -1276,32 +1285,6 @@ function setCustomSelect(dropdownId, textId, value, fallbackLabel) {
   }
 }
 
-function normalizeBranchName(name) {
-  const raw = String(name || "").trim().toLowerCase();
-  return ALLOWED_BRANCH_NAMES.find(branch => branch.toLowerCase() === raw) || "";
-}
-
-function uniqueAllowedBranchRecords(rows) {
-  const seen = new Set();
-  return (rows || []).reduce((result, row) => {
-    const name = normalizeBranchName(row?.name || row?.branch || row?.id);
-    if (!name || seen.has(name)) return result;
-    seen.add(name);
-    result.push({ ...row, id: row.id || name, name });
-    return result;
-  }, []);
-}
-
-function fallbackBranches() {
-  return ALLOWED_BRANCH_NAMES.map(name => ({ id: name, name }));
-}
-
-function branchNameByValue(value) {
-  const dropdown = document.getElementById("branchDropdown");
-  const match = dropdown ? [...dropdown.querySelectorAll(".fselect-opt")].find(opt => opt.dataset.val === value) : null;
-  return match?.querySelector(".opt-title")?.textContent || normalizeBranchName(value);
-}
-
 async function loadCurrentProfile() {
   const userId = await currentUserId();
   if (!userId) return { role: session?.role || "operator", branch_id: session?.branch_id || null };
@@ -1444,9 +1427,6 @@ function initOrderCreatePage() {
     })
     .then(() => Promise.all([loadBranches(), loadServices()]))
     .finally(() => {
-      if (isOperatorScoped() && selectedBranch) {
-        setCustomSelect("branchDropdown", "branchText", selectedBranch, branchNameByValue(selectedBranch) || "Choose branch");
-      }
       renderItems();
       loadEditOrder();
     });
