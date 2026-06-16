@@ -314,12 +314,12 @@ body {
 .order-items-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 14px;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .order-item-detail {
-  padding: 14px;
+  padding: 12px;
   border: 1px solid var(--gray-border);
   border-radius: 8px;
   background-color: #fafbfc;
@@ -334,22 +334,22 @@ body {
 }
 
 .order-item-title {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
   overflow-wrap: anywhere;
 }
 
 .order-item-fields {
   display: grid;
-  gap: 7px;
+  gap: 5px;
   margin: 0;
 }
 
 .order-item-fields > div {
   display: grid;
-  grid-template-columns: minmax(88px, 0.8fr) minmax(0, 1.2fr);
+  grid-template-columns: minmax(78px, 0.75fr) minmax(0, 1.25fr);
   gap: 10px;
 }
 
@@ -386,8 +386,8 @@ body {
 }
 
 .payment-summary {
-  margin-top: 16px;
-  padding-top: 14px;
+  margin-top: 14px;
+  padding-top: 12px;
   border-top: 1px solid var(--gray-border);
 }
 

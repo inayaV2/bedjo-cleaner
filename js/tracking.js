@@ -165,22 +165,79 @@ async function fetchOrderItems(orderId) {
 
 async function attachServices(items) {
   const serviceIds = [...new Set(items.map(item => item.service_id).filter(Boolean))];
-  if (!serviceIds.length) return;
+  let services = [];
 
-  const { data, error } = await supabaseClient
-    .from("services")
-    .select("id, name, price, category, description")
-    .in("id", serviceIds);
+  if (serviceIds.length) {
+    const { data, error } = await supabaseClient
+      .from("services")
+      .select("id, name, price, category, description")
+      .in("id", serviceIds);
 
-  if (error) {
-    console.warn("Tracking services fetch error:", error);
-    return;
+    if (error) {
+      console.warn("Tracking services fetch error:", error);
+    } else {
+      services = data || [];
+    }
   }
 
-  const map = new Map((data || []).map(service => [String(service.id), service]));
+  const unresolvedItems = items.filter(item =>
+    !item.service_id ||
+    !services.some(service => String(service.id) === String(item.service_id))
+  );
+  const fallbackServices = await fetchFallbackServices(unresolvedItems);
+  const allServices = mergeServices(services, fallbackServices);
+
+  const map = new Map(allServices.map(service => [String(service.id), service]));
   items.forEach(item => {
-    item.services = map.get(String(item.service_id)) || null;
+    item.services = map.get(String(item.service_id)) || matchServiceByItem(allServices, item) || null;
   });
+}
+
+async function fetchFallbackServices(items) {
+  const categories = [...new Set((items || [])
+    .map(item => cleanValue(item.item_type))
+    .filter(value => value !== "-"))];
+
+  if (!categories.length) return [];
+
+  const chunks = await Promise.all(categories.map(category =>
+    supabaseClient
+      .from("services")
+      .select("id, name, price, category, description")
+      .eq("category", category)
+      .then(result => {
+        if (result.error) {
+          console.warn("Tracking fallback services fetch error:", result.error);
+          return [];
+        }
+        return result.data || [];
+      })
+  ));
+
+  return chunks.flat();
+}
+
+function mergeServices(primary, fallback) {
+  const seen = new Set();
+  return [...(primary || []), ...(fallback || [])].filter(service => {
+    const key = service?.id ? `id:${service.id}` : `name:${service?.name || ""}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function matchServiceByItem(services, item) {
+  const itemType = normalizeLabel(item.item_type);
+  const price = itemUnitPriceFromRow(item);
+
+  return (services || []).find(service => {
+    const sameCategory = itemType && normalizeLabel(service.category) === itemType;
+    const samePrice = price !== null && numericValue(service.price) === price;
+    return sameCategory && samePrice;
+  }) || (services || []).find(service =>
+    itemType && normalizeLabel(service.category) === itemType
+  ) || null;
 }
 
 async function fetchPayments(orderId) {
@@ -301,12 +358,16 @@ function renderPaymentSummary(order, payment) {
   const itemsTotal = calculateItemsTotal(order.order_items || []);
   const paymentAmount = numericValue(payment?.amount);
   const orderAmount = numericValue(order.total_amount);
+  const paymentStatus = normalizeStatus(payment?.status || order?.payment_status);
   const total = itemsTotal > 0
     ? itemsTotal
     : paymentAmount !== null
       ? paymentAmount
       : orderAmount;
-  const paid = payment ? (numericValue(payment.paid_amount) ?? 0) : null;
+  const storedPaid = numericValue(payment?.paid_amount);
+  const paid = payment
+    ? (paymentStatus === "paid" && (!storedPaid || storedPaid <= 0) ? total : (storedPaid ?? 0))
+    : null;
   const remaining = total === null || paid === null ? null : Math.max(total - paid, 0);
 
   setText("order-total", formatRupiah(total));
@@ -327,37 +388,36 @@ function calculateItemsTotal(items) {
 
 function itemServiceLabel(item, itemType) {
   const relationName = cleanValue(item.services?.name);
-  const relationBase = relationName === "-" ? "" : relationName.split(" - ")[0].trim();
-  let service = cleanValue(
+  const relationBase = relationName === "-" ? "" : splitServiceName(relationName).base;
+  return cleanValue(
+    relationBase ||
     item.service_type ||
     item.service_name ||
     item.service ||
-    serviceFromNotes(item.notes || item.note) ||
-    relationBase
+    serviceFromNotes(item.notes || item.note)
   );
-
-  if (service !== "-" && itemType !== "-") {
-    const normalizedService = normalizeLabel(service);
-    const normalizedItem = normalizeLabel(itemType);
-    if (!normalizedService.includes(normalizedItem)) service = `${service} ${itemType}`;
-  }
-
-  return service;
 }
 
 function itemVariant(item) {
-  const direct = cleanValue(item.variant || variantFromNotes(item.notes || item.note));
-  if (direct !== "-") return direct;
   const serviceName = String(item.services?.name || "");
-  const parts = serviceName.split(" - ");
-  return cleanValue(parts.length > 1 ? parts.slice(1).join(" - ") : "");
+  const serviceVariant = cleanValue(splitServiceName(serviceName).variant);
+  if (serviceVariant !== "-") return serviceVariant;
+  return cleanValue(item.variant || variantFromNotes(item.notes || item.note) || item.color);
 }
 
 function itemUnitPrice(item) {
-  const direct = numericValue(item.price);
-  if (direct !== null) return direct;
   const servicePrice = numericValue(item.services?.price);
   if (servicePrice !== null) return servicePrice;
+  const direct = numericValue(item.price);
+  if (direct !== null) return direct;
+  const subtotal = numericValue(item.subtotal);
+  const quantity = positiveNumber(item.quantity, 1);
+  return subtotal !== null ? subtotal / quantity : null;
+}
+
+function itemUnitPriceFromRow(item) {
+  const direct = numericValue(item.price);
+  if (direct !== null) return direct;
   const subtotal = numericValue(item.subtotal);
   const quantity = positiveNumber(item.quantity, 1);
   return subtotal !== null ? subtotal / quantity : null;
@@ -408,6 +468,22 @@ function cleanValue(value) {
 
 function variantFromNotes(note) {
   return String(note || "").match(/\[variant:([^\]]+)\]/i)?.[1]?.trim() || "";
+}
+
+function splitServiceName(name) {
+  const value = String(name || "").trim();
+  const separators = [" - ", " – ", " — "];
+  const indexes = separators
+    .map(separator => ({ separator, index: value.lastIndexOf(separator) }))
+    .filter(item => item.index >= 0);
+
+  if (!value || !indexes.length) return { base: value, variant: "" };
+
+  const match = indexes.sort((a, b) => b.index - a.index)[0];
+  return {
+    base: value.slice(0, match.index).trim(),
+    variant: value.slice(match.index + match.separator.length).trim(),
+  };
 }
 
 function escapeHtml(value) {
@@ -606,6 +682,8 @@ function serviceFromNotes(note) {
 }
 
 function serviceValue(item) {
+  const resolved = itemServiceLabel(item, cleanValue(item.item_type));
+  if (resolved && resolved !== "-") return resolved;
   return item.service_type ||
     item.service_name ||
     item.service ||
