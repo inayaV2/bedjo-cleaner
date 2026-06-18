@@ -1,890 +1,146 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Bedjo Cleaner - Track Order</title>
-    <style>
-      :root {
-        --primary: #0145ee;
-        --primary-soft: #e8f1ff;
-        --bg: #f3f6fb;
-        --card: #ffffff;
-        --border: #dce3ef;
-        --muted: #667085;
-        --text: #101828;
-        --success: #0f9f5f;
-        --warning: #d97706;
-        --danger: #d92d20;
-      }
-
-      * {
-        box-sizing: border-box;
-      }
-
-      body {
-        margin: 0;
-        background: var(--bg);
-        color: var(--text);
-        font-family:
-          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-          "Segoe UI", sans-serif;
-      }
-
-      .header {
-        position: sticky;
-        top: 0;
-        z-index: 2;
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        padding: 28px 32px;
-        background: #dcebfb;
-        box-shadow: 0 1px 0 rgba(16, 24, 40, 0.06);
-      }
-
-      .logo {
-        width: 54px;
-        height: 54px;
-        border-radius: 16px;
-        background: #fff;
-        object-fit: contain;
-        padding: 6px;
-      }
-
-      .brand {
-        margin: 0;
-        color: #2386d8;
-        font-size: clamp(28px, 6vw, 40px);
-        font-weight: 800;
-        letter-spacing: -0.04em;
-      }
-
-      main {
-        width: min(720px, 100%);
-        margin: 0 auto;
-        padding: 28px 30px 110px;
-      }
-
-      .card {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 26px;
-        box-shadow: 0 16px 50px rgba(16, 24, 40, 0.08);
-        padding: 28px;
-        margin-bottom: 26px;
-      }
-
-      h2,
-      h3 {
-        margin: 0 0 18px;
-        letter-spacing: -0.03em;
-      }
-
-      .search-row {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 14px;
-      }
-
-      input,
-      button {
-        min-height: 58px;
-        border-radius: 14px;
-        font: inherit;
-        font-size: 18px;
-      }
-
-      input {
-        width: 100%;
-        border: 1px solid var(--border);
-        padding: 0 18px;
-        outline: none;
-      }
-
-      input:focus {
-        border-color: var(--primary);
-        box-shadow: 0 0 0 4px rgba(1, 69, 238, 0.12);
-      }
-
-      button {
-        border: 0;
-        background: #2f8bd8;
-        color: #fff;
-        font-weight: 800;
-        padding: 0 26px;
-        cursor: pointer;
-      }
-
-      button:disabled {
-        cursor: wait;
-        opacity: 0.7;
-      }
-
-      .customer-head {
-        display: grid;
-        grid-template-columns: auto 1fr auto;
-        align-items: center;
-        gap: 18px;
-      }
-
-      .avatar {
-        display: grid;
-        place-items: center;
-        width: 82px;
-        height: 82px;
-        border-radius: 50%;
-        background: #a8d8fb;
-        color: #2386d8;
-        font-size: 34px;
-        font-weight: 800;
-      }
-
-      .customer-name {
-        margin: 0 0 4px;
-        font-size: 26px;
-        font-weight: 800;
-      }
-
-      .order-code {
-        color: var(--muted);
-        font-size: 18px;
-        line-height: 1.45;
-      }
-
-      .badge {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 110px;
-        padding: 10px 18px;
-        border-radius: 999px;
-        background: #dfe9ff;
-        color: #3157a5;
-        font-weight: 800;
-        text-transform: uppercase;
-      }
-
-      .divider {
-        height: 1px;
-        margin: 26px 0;
-        background: var(--border);
-      }
-
-      .rows {
-        display: grid;
-        gap: 16px;
-      }
-
-      .row {
-        display: grid;
-        grid-template-columns: minmax(130px, 0.75fr) minmax(0, 1fr);
-        gap: 16px;
-        align-items: start;
-        font-size: 22px;
-      }
-
-      .label {
-        color: #7a8394;
-      }
-
-      .value {
-        font-weight: 700;
-        text-align: right;
-        overflow-wrap: anywhere;
-      }
-
-      .section-title {
-        margin-top: 8px;
-        font-size: 24px;
-        font-weight: 800;
-      }
-
-      .item-card {
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        padding: 22px 26px;
-        margin-top: 18px;
-        background: #fff;
-      }
-
-      .media-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
-        gap: 14px;
-        margin-top: 14px;
-      }
-
-      .media-grid img {
-        width: 100%;
-        aspect-ratio: 1;
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        object-fit: cover;
-        background: #f8fafc;
-      }
-
-      .item-index {
-        color: #2f8bd8;
-        font-size: 18px;
-        font-weight: 900;
-        letter-spacing: 0.03em;
-        text-transform: uppercase;
-      }
-
-      .item-title {
-        margin: 12px 0 22px;
-        font-size: 24px;
-        font-weight: 900;
-      }
-
-      .status-pending,
-      .status-received,
-      .status-on_process {
-        background: #e8f1ff;
-        color: #3157a5;
-      }
-
-      .status-completed,
-      .status-paid {
-        background: #dcfae6;
-        color: var(--success);
-      }
-
-      .status-cancelled,
-      .status-unpaid {
-        background: #fee4e2;
-        color: var(--danger);
-      }
-
-      .status-partial {
-        background: #fef0c7;
-        color: var(--warning);
-      }
-
-      .message {
-        color: var(--muted);
-        font-size: 18px;
-        line-height: 1.5;
-      }
-
-      .error {
-        color: var(--danger);
-        font-weight: 700;
-      }
-
-      .hidden {
-        display: none;
-      }
-
-      @media (max-width: 560px) {
-        .header {
-          padding: 28px 30px;
-        }
-
-        main {
-          padding: 22px 30px 100px;
-        }
-
-        .card {
-          border-radius: 24px;
-          padding: 28px;
-        }
-
-        .search-row {
-          grid-template-columns: 1fr auto;
-        }
-
-        .customer-head {
-          grid-template-columns: auto 1fr;
-        }
-
-        .badge {
-          grid-column: 2;
-          justify-self: start;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <header class="header">
-      <img
-        class="logo"
-        src="/assets/assets/images/logo_bedjo.png"
-        alt="Bedjo Cleaner"
-      />
-      <h1 class="brand">Bedjo Cleaner</h1>
-    </header>
-
-    <main>
-      <section class="card">
-        <h2>Cari pesanan</h2>
-        <form class="search-row" id="searchForm">
-          <input
-            id="codeInput"
-            autocomplete="off"
-            placeholder="Masukkan order code"
-          />
-          <button id="searchButton" type="submit">Cari</button>
-        </form>
-        <p id="message" class="message"></p>
-      </section>
-
-      <section id="result" class="card hidden"></section>
-    </main>
-
-    <script>
-      const SUPABASE_URL = "https://ozwurhwleqjnajhuseld.supabase.co";
-      const SUPABASE_PUBLISHABLE_KEY =
-        "sb_publishable_FNjTrdwjzMzgoNuz3Ur76Q_YAZqQhlx";
-      const headers = {
-        apikey: SUPABASE_PUBLISHABLE_KEY,
-        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-      };
-
-      const form = document.getElementById("searchForm");
-      const codeInput = document.getElementById("codeInput");
-      const message = document.getElementById("message");
-      const result = document.getElementById("result");
-      const searchButton = document.getElementById("searchButton");
-
-      const params = new URLSearchParams(window.location.search);
-      const initialCode = (params.get("code") || "").replace(/^#/, "").trim();
-      codeInput.value = initialCode;
-
-      form.addEventListener("submit", (event) => {
-        event.preventDefault();
-        loadOrder(codeInput.value);
-      });
-
-      if (initialCode) {
-        loadOrder(initialCode);
-      }
-
-      async function rest(table, query) {
-        const url = new URL(`${SUPABASE_URL}/rest/v1/${table}`);
-        Object.entries(query).forEach(([key, value]) => {
-          if (value !== undefined && value !== null && value !== "") {
-            url.searchParams.set(key, value);
-          }
-        });
-        const response = await fetch(url, { headers });
-        if (!response.ok) {
-          const text = await response.text();
-          throw new Error(text || `Gagal membaca table ${table}`);
-        }
-        return response.json();
-      }
-
-      async function loadOrder(rawCode) {
-        const code = String(rawCode || "").replace(/^#/, "").trim();
-        if (!code) {
-          showMessage("Masukkan order code terlebih dahulu.", true);
-          return;
-        }
-
-        setLoading(true);
-        showMessage("Memuat detail pesanan...");
-        result.classList.add("hidden");
-
-        try {
-          const orders = await rest("orders", {
-            select: "*",
-            order_code: `eq.${code}`,
-            limit: "1",
-          });
-          const order = orders[0];
-          if (!order) {
-            showMessage(`Order ${escapeHtml(code)} tidak ditemukan.`, true);
-            return;
-          }
-
-          const [branch, items, payments, photos] = await Promise.all([
-            fetchBranch(order.branch_id),
-            fetchItems(order.id),
-            rest("payments", {
-              select: "*",
-              order_id: `eq.${order.id}`,
-              limit: "1",
-            }),
-            fetchOrderPhotos(order.id),
-          ]);
-          const payment = payments[0] || null;
-          const paymentProofs = await fetchPaymentProofs(order.id, payment?.id);
-          const itemsWithServices = await attachServices(items);
-
-          renderOrder({
-            order,
-            branch,
-            items: itemsWithServices,
-            payment,
-            photos,
-            paymentProofs,
-          });
-          showMessage("");
-        } catch (error) {
-          showMessage(readableError(error), true);
-        } finally {
-          setLoading(false);
-        }
-      }
-
-      async function fetchBranch(branchId) {
-        if (!branchId) return null;
-        const branches = await rest("branches", {
-          select: "*",
-          id: `eq.${branchId}`,
-          limit: "1",
-        });
-        return branches[0] || null;
-      }
-
-      async function fetchItems(orderId) {
-        return rest("order_items", {
-          select: "*",
-          order_id: `eq.${orderId}`,
-        });
-      }
-
-      async function fetchOrderPhotos(orderId) {
-        try {
-          return await rest("order_photos", {
-            select: "*",
-            order_id: `eq.${orderId}`,
-            order: "created_at.asc",
-          });
-        } catch (_) {
-          return [];
-        }
-      }
-
-      async function fetchPaymentProofs(orderId, paymentId) {
-        try {
-          const query = {
-            select: "*",
-          };
-          if (paymentId) {
-            query.or = `(order_id.eq.${orderId},payment_id.eq.${paymentId})`;
-          } else {
-            query.order_id = `eq.${orderId}`;
-          }
-          query.order = "created_at.asc";
-          return await rest("payment_proofs", query);
-        } catch (_) {
-          return [];
-        }
-      }
-
-      async function attachServices(items) {
-        const ids = [
-          ...new Set(
-            items
-              .map((item) => item.service_id)
-              .filter((id) => id !== null && id !== undefined && id !== ""),
-          ),
-        ];
-        const services = ids.length
-          ? await rest("services", {
-              select: "*",
-              id: `in.(${ids.join(",")})`,
-            })
-          : [];
-        const unresolvedItems = items.filter(
-          (item) =>
-            !item.service_id ||
-            !services.some((service) => String(service.id) === String(item.service_id)),
-        );
-        const fallbackServices = unresolvedItems.length
-          ? await fetchFallbackServices(unresolvedItems)
-          : [];
-        const allServices = mergeServices(services, fallbackServices);
-        const byId = new Map(
-          allServices
-            .filter((service) => service.id !== null && service.id !== undefined)
-            .map((service) => [String(service.id), service]),
-        );
-        return items.map((item) => ({
-          ...item,
-          service:
-            byId.get(String(item.service_id)) ||
-            matchServiceByItem(allServices, item) ||
-            null,
-        }));
-      }
-
-      async function fetchFallbackServices(items) {
-        const categories = uniqueValues(items.map((item) => itemValue(item, ["item_type"])));
-        if (!categories.length) return [];
-
-        const chunks = await Promise.all(
-          categories.map((category) =>
-            rest("services", {
-              select: "*",
-              category: `eq.${category}`,
-            }).catch(() => []),
-          ),
-        );
-        return chunks.flat();
-      }
-
-      function mergeServices(primary, fallback) {
-        const seen = new Set();
-        return [...primary, ...fallback].filter((service) => {
-          const key = service.id !== null && service.id !== undefined
-            ? `id:${service.id}`
-            : `name:${service.name}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-      }
-
-      function matchServiceByItem(services, item) {
-        const itemType = itemValue(item, ["item_type"]).toLowerCase();
-        const qty = numberValue(item.quantity ?? item.qty, 1);
-        const itemPrice = numberValue(item.price);
-        const subtotalPrice = qty > 0 ? numberValue(item.subtotal) / qty : 0;
-        const targetPrice = itemPrice || subtotalPrice;
-
-        return services.find((service) => {
-          const sameCategory =
-            itemType &&
-            String(service.category || "").trim().toLowerCase() === itemType;
-          const samePrice =
-            targetPrice > 0 && numberValue(service.price) === targetPrice;
-          return sameCategory && samePrice;
-        }) || services.find((service) => {
-          return (
-            itemType &&
-            String(service.category || "").trim().toLowerCase() === itemType
-          );
-        }) || null;
-      }
-
-      function renderOrder({ order, branch, items, payment, photos, paymentProofs }) {
-        const itemSummaries = summarizeItems(items);
-        const orderStatus = normalizeText(order.status || "received");
-        const serviceSummary = uniqueValues(
-          items.map((item) => serviceFullName(item)),
-        ).join(", ");
-        const paymentAmount = numberValue(
-          payment?.amount ?? order.total_amount ?? sum(items, itemSubtotal),
-        );
-        const paymentStatus = normalizeText(payment?.status || "unpaid");
-        const storedPaidAmount = numberValue(payment?.paid_amount);
-        const paidAmount =
-          paymentStatus === "paid" && storedPaidAmount <= 0
-            ? paymentAmount
-            : storedPaidAmount;
-        const remainingAmount = Math.max(paymentAmount - paidAmount, 0);
-
-        result.innerHTML = `
-          <div class="customer-head">
-            <div class="avatar">${escapeHtml(initialLetter(order.customer_name))}</div>
-            <div>
-              <p class="customer-name">${escapeHtml(valueOrDash(order.customer_name))}</p>
-              <div class="order-code">Order ID: #${escapeHtml(valueOrDash(order.order_code))}</div>
-            </div>
-            <span class="badge status-${escapeHtml(orderStatus)}">${escapeHtml(statusLabel(orderStatus))}</span>
-          </div>
-
-          <div class="divider"></div>
-
-          <div class="rows">
-            ${infoRow("Tanggal", formatDate(order.created_at))}
-            ${infoRow("Jenis layanan", serviceSummary || "-")}
-            ${infoRow("No. HP", valueOrDash(order.customer_phone))}
-          </div>
-
-          <div class="divider"></div>
-
-          <h3 class="section-title">Informasi Order</h3>
-          <div class="rows">
-            ${infoRow("Cabang", branchName(branch))}
-            ${infoRow("Jenis item", itemSummaries || "-")}
-          </div>
-
-          ${items.length ? items.map(renderItem).join("") : `<p class="message">Belum ada item order.</p>`}
-
-          <div class="divider"></div>
-
-          <h3 class="section-title">Ringkasan Pembayaran</h3>
-          <div class="rows">
-            ${infoRow("Total biaya", formatRupiah(paymentAmount))}
-            ${infoRow("Jumlah dibayar", formatRupiah(paidAmount))}
-            ${infoRow("Sisa pembayaran", formatRupiah(remainingAmount))}
-            ${infoRow("Metode pembayaran", paymentMethodLabel(payment?.method))}
-            ${infoRow(
-              "Status pembayaran",
-              `<span class="badge status-${escapeHtml(paymentStatus)}">${escapeHtml(statusLabel(paymentStatus))}</span>`,
-            )}
-          </div>
-
-          <div class="divider"></div>
-
-          <h3 class="section-title">Foto item</h3>
-          ${renderMediaGrid(photos, "order-photos", "Belum ada foto item.")}
-
-          <h3 class="section-title">Bukti pembayaran</h3>
-          ${renderMediaGrid(paymentProofs, "payment-proofs", "Belum ada bukti pembayaran.")}
-        `;
-        result.classList.remove("hidden");
-      }
-
-      function renderItem(item, index) {
-        const fullService = serviceFullName(item);
-        const serviceBase = serviceBaseName(fullService);
-        const variant =
-          itemValue(item, ["variant", "color", "variant_color", "warna"]) ||
-          variantFromNotes(itemValue(item, ["notes", "note", "catatan"])) ||
-          serviceVariant(fullService);
-        const noteText = cleanNotes(itemValue(item, ["notes", "note", "catatan"]));
-        const qty = numberValue(item.quantity ?? item.qty, 1);
-        const price = numberValue(item.price ?? item.service?.price);
-        const subtotal = numberValue(item.subtotal, qty * price);
-
-        return `
-          <article class="item-card">
-            <div class="item-index">Item ${index + 1}</div>
-            <div class="item-title">${escapeHtml(itemValue(item, ["item_type"]) || serviceBase || "Item")}</div>
-            <div class="rows">
-              ${infoRow("Jenis item", itemValue(item, ["item_type"]) || "-")}
-              ${infoRow("Layanan", serviceBase || fullService || "-")}
-              ${infoRow("Varian", variant || "-")}
-              ${infoRow("Jumlah", `${qty} x ${formatRupiah(price)}`)}
-              ${infoRow("Subtotal", formatRupiah(subtotal))}
-              ${
-                noteText
-                  ? infoRow("Catatan", noteText)
-                  : ""
-              }
-            </div>
-          </article>
-        `;
-      }
-
-      function infoRow(label, value) {
-        return `
-          <div class="row">
-            <div class="label">${escapeHtml(label)}</div>
-            <div class="value">${typeof value === "string" ? value : escapeHtml(valueOrDash(value))}</div>
-          </div>
-        `;
-      }
-
-      function renderMediaGrid(records, bucket, emptyText) {
-        const urls = (records || [])
-          .map((record) => mediaUrl(record, bucket))
-          .filter(Boolean);
-        if (!urls.length) {
-          return `<p class="message">${escapeHtml(emptyText)}</p>`;
-        }
-        return `
-          <div class="media-grid">
-            ${urls
-              .map(
-                (url, index) =>
-                  `<img src="${escapeHtml(url)}" alt="Foto ${index + 1}" loading="lazy" />`,
-              )
-              .join("")}
-          </div>
-        `;
-      }
-
-      function mediaUrl(record, bucket) {
-        const direct = itemValue(record, [
-          "photo_url",
-          "proof_url",
-          "public_url",
-          "url",
-        ]);
-        if (direct) return direct;
-        const path = itemValue(record, ["file_path", "path", "storage_path"]);
-        if (!path) return "";
-        return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${encodeURI(path)}`;
-      }
-
-      function serviceFullName(item) {
-        return itemValue(item.service || {}, ["name", "service_name", "nama"]) || "";
-      }
-
-      function serviceBaseName(name) {
-        const parts = splitServiceName(name);
-        return parts.base;
-      }
-
-      function serviceVariant(name) {
-        const parts = splitServiceName(name);
-        return parts.variant || "";
-      }
-
-      function variantFromNotes(notes) {
-        const match = String(notes || "").match(/\[variant:([^\]]+)\]/i);
-        return match ? match[1].trim() : "";
-      }
-
-      function cleanNotes(notes) {
-        return String(notes || "")
-          .replace(/\[variant:[^\]]+\]/gi, "")
-          .trim();
-      }
-
-      function splitServiceName(name) {
-        const value = String(name || "").trim();
-        const match = value.match(/\s[-–—]\s/g);
-        if (!value || !match) return { base: value, variant: "" };
-        const lastSeparatorIndex = Math.max(
-          value.lastIndexOf(" - "),
-          value.lastIndexOf(" – "),
-          value.lastIndexOf(" — "),
-        );
-        if (lastSeparatorIndex < 0) return { base: value, variant: "" };
-        return {
-          base: value.slice(0, lastSeparatorIndex).trim(),
-          variant: value.slice(lastSeparatorIndex + 3).trim(),
-        };
-      }
-
-      function summarizeItems(items) {
-        return uniqueValues(items.map((item) => itemValue(item, ["item_type"]))).join(", ");
-      }
-
-      function uniqueValues(values) {
-        return [
-          ...new Set(
-            values
-              .map((value) => String(value || "").trim())
-              .filter((value) => value.length),
-          ),
-        ];
-      }
-
-      function itemValue(item, keys) {
-        for (const key of keys) {
-          const value = item?.[key];
-          if (value !== null && value !== undefined && String(value).trim()) {
-            return String(value).trim();
-          }
-        }
-        return "";
-      }
-
-      function branchName(branch) {
-        return itemValue(branch || {}, ["name", "branch_name", "nama"]) || "Belum tersedia";
-      }
-
-      function sum(items, getter) {
-        return items.reduce((total, item) => total + numberValue(getter(item)), 0);
-      }
-
-      function itemSubtotal(item) {
-        const qty = numberValue(item.quantity ?? item.qty, 1);
-        const price = numberValue(item.price ?? item.service?.price);
-        return numberValue(item.subtotal, qty * price);
-      }
-
-      function numberValue(value, fallback = 0) {
-        if (typeof value === "number" && Number.isFinite(value)) return value;
-        const parsed = Number(String(value ?? "").replace(/[^0-9.-]/g, ""));
-        return Number.isFinite(parsed) ? parsed : fallback;
-      }
-
-      function formatRupiah(value) {
-        return new Intl.NumberFormat("id-ID", {
-          style: "currency",
-          currency: "IDR",
-          maximumFractionDigits: 0,
-        })
-          .format(numberValue(value))
-          .replace(/\s/g, " ");
-      }
-
-      function formatDate(value) {
-        if (!value) return "-";
-        const date = new Date(value);
-        if (Number.isNaN(date.getTime())) return "-";
-        return new Intl.DateTimeFormat("id-ID", {
-          day: "2-digit",
-          month: "long",
-          year: "numeric",
-        }).format(date);
-      }
-
-      function paymentMethodLabel(method) {
-        const value = normalizeText(method || "");
-        if (value === "ewallet" || value === "e_wallet" || value === "e-wallet") {
-          return "E-Wallet";
-        }
-        if (value === "cash" || value === "tunai" || value === "cod") return "Tunai";
-        if (value === "transfer") return "Transfer";
-        return value ? titleCase(value.replaceAll("_", " ")) : "-";
-      }
-
-      function statusLabel(status) {
-        const value = normalizeText(status);
-        const labels = {
-          pending: "Pending",
-          received: "Diterima",
-          on_process: "Diproses",
-          processing: "Diproses",
-          completed: "Selesai",
-          cancelled: "Dibatalkan",
-          unpaid: "Belum Dibayar",
-          partial: "Partial",
-          paid: "Dibayar",
-        };
-        return labels[value] || titleCase(value.replaceAll("_", " "));
-      }
-
-      function normalizeText(value) {
-        return String(value || "").trim().toLowerCase();
-      }
-
-      function titleCase(value) {
-        return String(value || "")
-          .split(" ")
-          .filter(Boolean)
-          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(" ");
-      }
-
-      function initialLetter(name) {
-        const value = String(name || "B").trim();
-        return value ? value.charAt(0).toUpperCase() : "B";
-      }
-
-      function valueOrDash(value) {
-        const text = String(value ?? "").trim();
-        return text || "-";
-      }
-
-      function escapeHtml(value) {
-        return String(value ?? "")
-          .replaceAll("&", "&amp;")
-          .replaceAll("<", "&lt;")
-          .replaceAll(">", "&gt;")
-          .replaceAll('"', "&quot;")
-          .replaceAll("'", "&#039;");
-      }
-
-      function showMessage(text, isError = false) {
-        message.innerHTML = text || "";
-        message.classList.toggle("error", isError);
-      }
-
-      function setLoading(isLoading) {
-        searchButton.disabled = isLoading;
-        searchButton.textContent = isLoading ? "Memuat..." : "Cari";
-      }
-
-      function readableError(error) {
-        try {
-          const parsed = JSON.parse(error.message);
-          return parsed.message || error.message;
-        } catch (_) {
-          return error?.message || "Tracking gagal dimuat.";
-        }
-      }
-    </script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bedjo Cleaner - Track Order</title>
+  <link rel="stylesheet" href="../css/tracking.css?v=20260618-2" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-inner">
+      <img src="../assets/logo.png" alt="Bedjo Cleaner Logo" class="header-logo" onerror="this.style.display='none'" />
+      <span class="header-brand">Bedjo Cleaner</span>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <form class="tracking-search-card" id="tracking-form">
+      <label for="tracking-input">Cari pesanan</label>
+      <div class="tracking-search-row">
+        <input id="tracking-input" type="text" placeholder="Masukkan order code" autocomplete="off" />
+        <button type="submit">Cari</button>
+      </div>
+    </form>
+
+    <div id="loading-state" class="state-card hidden">
+      <div class="spinner"></div>
+      <p class="state-text">Memuat data order...</p>
+    </div>
+
+    <div id="error-state" class="state-card hidden">
+      <div class="state-icon error-icon">x</div>
+      <p class="state-title">Order tidak ditemukan</p>
+      <p class="state-text">Pastikan link atau QR code yang kamu scan sudah benar.</p>
+    </div>
+
+    <section id="order-card" class="card hidden">
+      <div class="order-header">
+        <div class="avatar" id="avatar-initials">B</div>
+        <div class="order-meta">
+          <p class="customer-name" id="customer-name">-</p>
+          <p class="order-id" id="order-id">Order ID: #-</p>
+        </div>
+        <span class="status-badge" id="status-badge">-</span>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="info-row">
+        <span class="info-label">Tanggal</span>
+        <span class="info-value" id="order-date">-</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Jenis layanan</span>
+        <span class="info-value" id="service-type">-</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">No. HP</span>
+        <span class="info-value" id="customer-phone">-</span>
+      </div>
+
+      <div class="divider"></div>
+
+      <p class="section-title">Informasi Order</p>
+      <div class="info-row">
+        <span class="info-label">Cabang</span>
+        <span class="info-value" id="branch-name">-</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Jenis item</span>
+        <span class="info-value" id="item-type">-</span>
+      </div>
+
+      <div class="order-items-list" id="order-items-list">
+        <div class="order-item-empty">Detail item belum tersedia.</div>
+      </div>
+
+      <div class="payment-summary">
+        <p class="payment-summary-title">Ringkasan Pembayaran</p>
+        <div class="info-row">
+          <span class="info-label">Total biaya</span>
+          <span class="info-value" id="order-total">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Jumlah dibayar</span>
+          <span class="info-value" id="paid-amount">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Sisa pembayaran</span>
+          <span class="info-value" id="remaining-amount">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Metode pembayaran</span>
+          <span class="info-value" id="payment-method">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Status pembayaran</span>
+          <span class="info-value" id="payment-status">-</span>
+        </div>
+      </div>
+
+      <div class="photo-block">
+        <p class="photo-label">Foto item:</p>
+        <div class="media-grid" id="order-photos-grid">
+          <div id="no-photo" class="no-photo">Tidak ada foto</div>
+        </div>
+      </div>
+
+      <div class="photo-block">
+        <p class="photo-label">Bukti pembayaran:</p>
+        <div class="media-grid" id="payment-proofs-grid">
+          <div id="no-payment-proof" class="no-photo">Tidak ada bukti pembayaran</div>
+        </div>
+      </div>
+
+      <div class="note-block">
+        <p class="photo-label">Catatan:</p>
+        <p class="note-text" id="order-note">-</p>
+      </div>
+
+      <div class="divider"></div>
+
+      <p class="section-title">Status Pengerjaan</p>
+      <div class="timeline" id="timeline"></div>
+    </section>
+
+    <div class="card help-card" id="help-card">
+      <div class="help-left">
+        <p class="help-title">Butuh bantuan?</p>
+        <p class="help-sub">Hubungi kami melalui WhatsApp</p>
+      </div>
+      <a href="#" id="wa-link" class="wa-btn" target="_blank" rel="noopener">
+        WhatsApp
+      </a>
+    </div>
+  </main>
+
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="../js/supabase.js?v=20260618-2"></script>
+  <script defer src="../js/app-config.js?v=20260618-2"></script>
+  <script defer src="../js/tracking.js?v=20260618-2"></script>
+</body>
 </html>
