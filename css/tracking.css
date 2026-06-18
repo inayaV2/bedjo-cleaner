@@ -570,3 +570,275 @@ body {
 .wa-btn:active {
   transform: scale(0.97);
 }
+
+/* Production tracking scale restore */
+.app-header {
+  padding: 20px 24px;
+}
+
+.header-inner {
+  max-width: 640px;
+  justify-content: center;
+  gap: 14px;
+}
+
+.header-logo {
+  width: 46px;
+  height: 46px;
+}
+
+.header-brand {
+  font-size: clamp(24px, 3vw, 30px);
+}
+
+.main-content {
+  max-width: 620px;
+  padding: 26px 20px 48px;
+  gap: 18px;
+}
+
+.card,
+.tracking-search-card {
+  border-radius: 20px;
+  box-shadow: 0 12px 34px rgba(16,24,40,0.08);
+}
+
+.card {
+  padding: 24px;
+}
+
+.tracking-search-card {
+  padding: 20px;
+}
+
+.tracking-search-card label {
+  font-size: 15px;
+  margin-bottom: 10px;
+}
+
+.tracking-search-row {
+  gap: 10px;
+}
+
+.tracking-search-row input,
+.tracking-search-row button {
+  height: 50px;
+  border-radius: 12px;
+  font-size: 15px;
+}
+
+.tracking-search-row input {
+  padding: 0 14px;
+}
+
+.tracking-search-row button {
+  padding: 0 22px;
+}
+
+.order-header {
+  gap: 16px;
+}
+
+.avatar {
+  width: 54px;
+  height: 54px;
+  font-size: 21px;
+}
+
+.customer-name {
+  font-size: 18px;
+}
+
+.order-id {
+  font-size: 14px;
+}
+
+.status-badge {
+  font-size: 12px;
+  padding: 6px 14px;
+}
+
+.divider {
+  margin: 20px 0;
+}
+
+.info-row {
+  margin-bottom: 11px;
+}
+
+.info-label,
+.info-value,
+.note-text,
+.timeline-label {
+  font-size: 15px;
+}
+
+.section-title {
+  font-size: 18px;
+}
+
+.order-items-list {
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.order-item-detail {
+  padding: 16px;
+}
+
+.order-item-number {
+  font-size: 13px;
+}
+
+.order-item-title {
+  margin-bottom: 12px;
+  font-size: 17px;
+}
+
+.order-item-fields {
+  gap: 8px;
+}
+
+.order-item-fields > div {
+  grid-template-columns: minmax(110px, 0.75fr) minmax(0, 1.25fr);
+  gap: 14px;
+}
+
+.order-item-fields dt,
+.order-item-fields dd {
+  font-size: 14px;
+}
+
+.payment-summary {
+  margin-top: 18px;
+  padding-top: 16px;
+}
+
+.payment-summary-title {
+  margin-bottom: 12px;
+  font-size: 17px;
+}
+
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: 12px;
+}
+
+.media-grid img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border: 1px solid var(--gray-border);
+  border-radius: 12px;
+  background: var(--gray-bg);
+  display: block;
+}
+
+.media-grid .no-photo {
+  min-height: 96px;
+  padding: 16px;
+  border: 1px dashed var(--gray-border);
+  border-radius: 12px;
+  background: var(--gray-bg);
+}
+
+.help-title {
+  font-size: 16px;
+}
+
+.help-sub {
+  font-size: 14px;
+}
+
+.wa-btn {
+  font-size: 15px;
+}
+
+@media (max-width: 640px) {
+  .app-header {
+    padding: 16px 18px;
+  }
+
+  .header-inner {
+    justify-content: flex-start;
+  }
+
+  .header-logo {
+    width: 40px;
+    height: 40px;
+  }
+
+  .header-brand {
+    font-size: 24px;
+  }
+
+  .main-content {
+    max-width: none;
+    padding: 18px 14px 40px;
+    gap: 14px;
+  }
+
+  .card {
+    padding: 20px;
+  }
+
+  .tracking-search-card {
+    padding: 18px;
+  }
+
+  .tracking-search-row input,
+  .tracking-search-row button {
+    height: 46px;
+    font-size: 14px;
+  }
+
+  .avatar {
+    width: 48px;
+    height: 48px;
+  }
+
+  .customer-name {
+    font-size: 17px;
+  }
+
+  .info-label,
+  .info-value,
+  .note-text,
+  .timeline-label {
+    font-size: 14px;
+  }
+
+  .section-title,
+  .payment-summary-title {
+    font-size: 16px;
+  }
+
+  .order-item-title {
+    font-size: 15px;
+  }
+
+  .media-grid {
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  }
+}
+
+@media (max-width: 380px) {
+  .tracking-search-row {
+    flex-direction: column;
+  }
+
+  .tracking-search-row button {
+    width: 100%;
+  }
+
+  .order-header {
+    align-items: flex-start;
+  }
+
+  .status-badge {
+    max-width: 120px;
+    white-space: normal;
+    text-align: center;
+  }
+}

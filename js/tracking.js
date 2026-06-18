@@ -1,17 +1,17 @@
 const STATUS_CONFIG = {
-  pending: { label: "Received", badgeClass: "badge-pending" },
-  received: { label: "Received", badgeClass: "badge-pending" },
-  on_process: { label: "Processing", badgeClass: "badge-process" },
-  processing: { label: "Processing", badgeClass: "badge-process" },
-  process: { label: "Processing", badgeClass: "badge-process" },
-  completed: { label: "Completed", badgeClass: "badge-completed" },
+  pending: { label: "Diterima", badgeClass: "badge-pending" },
+  received: { label: "Diterima", badgeClass: "badge-pending" },
+  on_process: { label: "Diproses", badgeClass: "badge-process" },
+  processing: { label: "Diproses", badgeClass: "badge-process" },
+  process: { label: "Diproses", badgeClass: "badge-process" },
+  completed: { label: "Selesai", badgeClass: "badge-completed" },
   cancelled: { label: "Dibatalkan", badgeClass: "badge-cancelled" },
 };
 
 const TIMELINE_STEPS = [
-  { key: "received", label: "Received" },
-  { key: "processing", label: "Processing" },
-  { key: "completed", label: "Completed" },
+  { key: "received", label: "Diterima" },
+  { key: "processing", label: "Diproses" },
+  { key: "completed", label: "Selesai" },
 ];
 
 const STATUS_STEP_INDEX = {
@@ -230,8 +230,14 @@ function mergeServices(primary, fallback) {
 function matchServiceByItem(services, item) {
   const itemType = normalizeLabel(item.item_type);
   const price = itemUnitPriceFromRow(item);
+  const variant = normalizeLabel(item.variant || variantFromNotes(item.notes || item.note) || item.color);
 
   return (services || []).find(service => {
+    const sameCategory = itemType && normalizeLabel(service.category) === itemType;
+    const samePrice = price !== null && numericValue(service.price) === price;
+    const sameVariant = !variant || normalizeLabel(service.name).includes(variant);
+    return sameCategory && samePrice && sameVariant;
+  }) || (services || []).find(service => {
     const sameCategory = itemType && normalizeLabel(service.category) === itemType;
     const samePrice = price !== null && numericValue(service.price) === price;
     return sameCategory && samePrice;
@@ -284,7 +290,7 @@ function renderOrder(order) {
   setText("branch-name", order.branches?.name || "-");
   setValueByLabel("Jenis layanan", renderedServiceType);
   setValueByLabel("Jenis item", renderedItemType);
-  setValueByLabel("Payment status", renderedPaymentStatus);
+  setValueByLabel("Status pembayaran", renderedPaymentStatus);
   setText("order-note", notes(order));
   renderOrderItems(order.order_items || []);
   renderPaymentSummary(order, payment);
@@ -495,6 +501,10 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function escapeAttr(value) {
+  return escapeHtml(value).replaceAll("`", "&#096;");
+}
+
 async function fetchPaymentProofs(orderId) {
   if (!orderId) return [];
   try {
@@ -534,35 +544,49 @@ async function fetchOrderPhotos(orderId) {
 }
 
 function renderPhoto(order) {
-  const img = document.getElementById("item-photo");
+  const grid = document.getElementById("order-photos-grid");
   const noPhoto = document.getElementById("no-photo");
-  const photoUrl = order.order_photos?.[0]?.photo_url || "";
+  const photos = (order.order_photos || []).filter(photo => photo.photo_url);
 
-  if (img && photoUrl) {
-    img.src = photoUrl;
-    img.classList.remove("hidden");
-    noPhoto?.classList.add("hidden");
+  if (!grid) return;
+
+  if (photos.length) {
+    grid.innerHTML = photos.map((photo, index) => `
+      <img src="${escapeAttr(photo.photo_url)}" alt="Foto item ${index + 1}" loading="lazy" />
+    `).join("");
     return;
   }
 
-  img?.classList.add("hidden");
-  noPhoto?.classList.remove("hidden");
+  grid.innerHTML = "";
+  if (noPhoto) {
+    noPhoto.classList.remove("hidden");
+    grid.appendChild(noPhoto);
+  } else {
+    grid.innerHTML = `<div class="no-photo">Tidak ada foto</div>`;
+  }
 }
 
 function renderPaymentProof(order) {
-  const img = document.getElementById("payment-proof-photo");
+  const grid = document.getElementById("payment-proofs-grid");
   const noProof = document.getElementById("no-payment-proof");
-  const proofUrl = order.payment_proofs?.[0]?.proof_url || "";
+  const proofs = (order.payment_proofs || []).filter(proof => proof.proof_url);
 
-  if (img && proofUrl) {
-    img.src = proofUrl;
-    img.classList.remove("hidden");
-    noProof?.classList.add("hidden");
+  if (!grid) return;
+
+  if (proofs.length) {
+    grid.innerHTML = proofs.map((proof, index) => `
+      <img src="${escapeAttr(proof.proof_url)}" alt="Bukti pembayaran ${index + 1}" loading="lazy" />
+    `).join("");
     return;
   }
 
-  img?.classList.add("hidden");
-  noProof?.classList.remove("hidden");
+  grid.innerHTML = "";
+  if (noProof) {
+    noProof.classList.remove("hidden");
+    grid.appendChild(noProof);
+  } else {
+    grid.innerHTML = `<div class="no-photo">Tidak ada bukti pembayaran</div>`;
+  }
 }
 
 function subscribeTrackingMedia(order) {
@@ -664,9 +688,9 @@ function finalServiceType(orderItems) {
 function finalPaymentStatus(order, payment) {
   const status = payment?.status || order?.payment_status || "-";
   const normalized = normalizeStatus(status);
-  if (normalized === "paid") return "Paid";
-  if (normalized === "unpaid") return "Unpaid";
-  if (normalized === "partial") return "Partial";
+  if (normalized === "paid") return "DIBAYAR";
+  if (normalized === "unpaid") return "BELUM DIBAYAR";
+  if (normalized === "partial") return "SEBAGIAN";
   return status === "-" ? "-" : String(status).charAt(0).toUpperCase() + String(status).slice(1);
 }
 
@@ -698,14 +722,14 @@ function stripServiceFromNotes(note) {
 function paymentStatusText(payment) {
   if (!payment) return "-";
   const status = normalizeStatus(payment.status);
-  if (status === "paid") return "Paid";
-  if (status === "partial") return "Partial";
-  if (status === "unpaid") return "Unpaid";
+  if (status === "paid") return "DIBAYAR";
+  if (status === "partial") return "SEBAGIAN";
+  if (status === "unpaid") return "BELUM DIBAYAR";
   const total = Number(payment.amount || 0);
   const paid = Number(payment.paid_amount || 0);
-  if (total > 0 && paid >= total) return "Paid";
-  if (paid > 0) return "Partial";
-  return "Unpaid";
+  if (total > 0 && paid >= total) return "DIBAYAR";
+  if (paid > 0) return "SEBAGIAN";
+  return "BELUM DIBAYAR";
 }
 
 function trackingPayment(order) {
