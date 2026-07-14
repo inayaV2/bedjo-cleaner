@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bedjo Cleaner - Track Order</title>
-  <link rel="stylesheet" href="../css/tracking.css?v=20260618-2" />
+  <link rel="stylesheet" href="../css/tracking.css?v=20260714-token" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
@@ -21,9 +21,12 @@
     <form class="tracking-search-card" id="tracking-form">
       <label for="tracking-input">Cari pesanan</label>
       <div class="tracking-search-row">
-        <input id="tracking-input" type="text" placeholder="Masukkan order code" autocomplete="off" />
+        <input id="tracking-input" type="text" placeholder="Masukkan tracking token" autocomplete="off" />
         <button type="submit">Cari</button>
       </div>
+      <p class="state-text" style="margin-top: 12px;">
+        Gunakan link tracking terbaru dari Bedjo Cleaner.
+      </p>
     </form>
 
     <div id="loading-state" class="state-card hidden">
@@ -56,10 +59,6 @@
       <div class="info-row">
         <span class="info-label">Jenis layanan</span>
         <span class="info-value" id="service-type">-</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">No. HP</span>
-        <span class="info-value" id="customer-phone">-</span>
       </div>
 
       <div class="divider"></div>
@@ -109,13 +108,6 @@
         </div>
       </div>
 
-      <div class="photo-block">
-        <p class="photo-label">Bukti pembayaran:</p>
-        <div class="media-grid" id="payment-proofs-grid">
-          <div id="no-payment-proof" class="no-photo">Tidak ada bukti pembayaran</div>
-        </div>
-      </div>
-
       <div class="note-block">
         <p class="photo-label">Catatan:</p>
         <p class="note-text" id="order-note">-</p>
@@ -139,8 +131,8 @@
   </main>
 
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script defer src="../js/supabase.js?v=20260618-2"></script>
-  <script defer src="../js/app-config.js?v=20260618-2"></script>
-  <script defer src="../js/tracking.js?v=20260618-2"></script>
+  <script defer src="../js/supabase.js?v=20260714-token"></script>
+  <script defer src="../js/app-config.js?v=20260714-token"></script>
+  <script defer src="../js/tracking.js?v=20260714-token"></script>
 </body>
 </html>
