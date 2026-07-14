@@ -21,7 +21,7 @@ const STATUS_STEP_INDEX = {
   processing: 1,
   process: 1,
   completed: 2,
-  cancelled: -1
+  cancelled: -1,
 };
 
 const loadingEl = document.getElementById("loading-state");
@@ -34,22 +34,38 @@ let trackingPhotosChannel = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   ensureTrackingDom();
-  const params = new URLSearchParams(window.location.search);
-  const code = normalizeTrackingCode(params.get("code") || params.get("order_id") || params.get("id"));
-  console.log("tracking URL code:", code);
 
-  if (code) {
-    if (inputEl) inputEl.value = code;
-    loadOrder(code);
+  const params = new URLSearchParams(window.location.search);
+  const token = normalizeTrackingToken(params.get("token"));
+  const oldCode = normalizeTrackingToken(
+    params.get("code") || params.get("order_id") || params.get("id")
+  );
+
+  if (oldCode && !token) {
+    showError(
+      "Link tracking lama perlu diperbarui",
+      "Silakan hubungi Bedjo Cleaner untuk mendapatkan link tracking terbaru."
+    );
+    return;
+  }
+
+  if (token) {
+    if (inputEl) inputEl.value = token;
+    loadOrder(token);
   }
 
   formEl?.addEventListener("submit", event => {
     event.preventDefault();
-    const value = normalizeTrackingCode(inputEl?.value);
+
+    const value = normalizeTrackingToken(inputEl?.value);
     if (!value) {
-      showError();
+      showError(
+        "Token tracking tidak ditemukan",
+        "Masukkan token tracking terbaru dari Bedjo Cleaner."
+      );
       return;
     }
+
     loadOrder(value);
   });
 });
@@ -57,79 +73,82 @@ document.addEventListener("DOMContentLoaded", () => {
 async function loadOrder(value) {
   showLoading();
 
-  const orderCode = normalizeTrackingCode(value);
-  console.log("tracking code:", orderCode);
-  if (!orderCode) {
-    showError();
+  const token = normalizeTrackingToken(value);
+  console.log("tracking token:", token);
+
+  if (!token) {
+    showError(
+      "Token tracking tidak ditemukan",
+      "Masukkan token tracking terbaru dari Bedjo Cleaner."
+    );
     return;
   }
 
-  const { data: order, error } = await fetchTrackingOrder(orderCode);
+  const { data: order, error } = await fetchTrackingOrder(token);
 
   if (error) {
     console.error("Tracking fetch error:", error);
-    showError();
+    showError("Order tidak ditemukan", "Pastikan link atau QR code yang kamu scan sudah benar.");
     return;
   }
 
   if (!order) {
-    showError();
+    showError("Order tidak ditemukan", "Pastikan link atau QR code yang kamu scan sudah benar.");
     return;
   }
 
   console.log("tracking order.id:", order.id);
   console.log("fetched order:", order);
-  console.log("tracking order:", order);
 
-  const [orderItems, payments, branch, orderPhotos, paymentProofs] = await Promise.all([
+  const [orderItems, payments, branch, orderPhotos] = await Promise.all([
     fetchOrderItems(order.id),
     fetchPayments(order.id),
     fetchBranch(order.branch_id),
     fetchOrderPhotos(order.id),
-    fetchPaymentProofs(order.id),
   ]);
 
   console.log("fetched order_items:", orderItems);
   console.log("fetched payments:", payments);
   console.log("fetched branch:", branch);
   console.log("fetched order_photos:", orderPhotos);
-  console.log("fetched payment_proofs:", paymentProofs);
 
   subscribeTrackingMedia(order);
-  renderTracking(order, orderItems, payments, branch, orderPhotos, paymentProofs);
-  requestAnimationFrame(() => renderTracking(order, orderItems, payments, branch, orderPhotos, paymentProofs));
+  renderTracking(order, orderItems, payments, branch, orderPhotos);
+  requestAnimationFrame(() => renderTracking(order, orderItems, payments, branch, orderPhotos));
 }
 
-function renderTracking(order, orderItems = [], payments = [], branch = null, photos = [], proofs = []) {
+function renderTracking(order, orderItems = [], payments = [], branch = null, photos = []) {
   order.order_items = orderItems || [];
   order.payments = payments || [];
   order.branches = branch || null;
   order.order_photos = photos || [];
-  order.payment_proofs = proofs || [];
+
   console.log("tracking order_items:", order.order_items);
   console.log("tracking payment:", trackingPayment(order));
+
   renderOrder(order);
 }
 
-async function fetchTrackingOrder(orderCode) {
+async function fetchTrackingOrder(token) {
   return supabaseClient
     .from("orders")
     .select(`
       id,
       order_code,
+      public_tracking_token,
       customer_name,
-      customer_phone,
       status,
       branch_id,
       total_amount,
       created_at
     `)
-    .eq("order_code", orderCode)
+    .eq("public_tracking_token", token)
     .maybeSingle();
 }
 
 async function fetchBranch(branchId) {
   if (!branchId) return null;
+
   const { data, error } = await supabaseClient
     .from("branches")
     .select("id, name")
@@ -146,6 +165,7 @@ async function fetchBranch(branchId) {
 
 async function fetchOrderItems(orderId) {
   if (!orderId) return [];
+
   const simple = await supabaseClient
     .from("order_items")
     .select("*")
@@ -159,6 +179,7 @@ async function fetchOrderItems(orderId) {
 
   const items = simple.data || [];
   console.log("raw tracking order_items:", items);
+
   await attachServices(items);
   return items;
 }
@@ -184,10 +205,11 @@ async function attachServices(items) {
     !item.service_id ||
     !services.some(service => String(service.id) === String(item.service_id))
   );
+
   const fallbackServices = await fetchFallbackServices(unresolvedItems);
   const allServices = mergeServices(services, fallbackServices);
-
   const map = new Map(allServices.map(service => [String(service.id), service]));
+
   items.forEach(item => {
     item.services = map.get(String(item.service_id)) || matchServiceByItem(allServices, item) || null;
   });
@@ -219,6 +241,7 @@ async function fetchFallbackServices(items) {
 
 function mergeServices(primary, fallback) {
   const seen = new Set();
+
   return [...(primary || []), ...(fallback || [])].filter(service => {
     const key = service?.id ? `id:${service.id}` : `name:${service?.name || ""}`;
     if (seen.has(key)) return false;
@@ -248,15 +271,18 @@ function matchServiceByItem(services, item) {
 
 async function fetchPayments(orderId) {
   if (!orderId) return [];
+
   const { data, error } = await supabaseClient
     .from("payments")
     .select("id, order_id, method, amount, paid_amount, status, created_at")
     .eq("order_id", orderId)
     .order("created_at", { ascending: false });
+
   if (error) {
     console.warn("Tracking payments fetch error:", error);
     return [];
   }
+
   return data || [];
 }
 
@@ -268,22 +294,11 @@ function renderOrder(order) {
   const renderedItemType = finalItemType(order.order_items || []);
   const renderedServiceType = finalServiceType(order.order_items || []);
   const renderedPaymentStatus = finalPaymentStatus(order, payment);
-  console.log("tracking DOM render targets:", {
-    serviceTypeEl: document.getElementById("service-type"),
-    itemTypeEl: document.getElementById("item-type"),
-    paymentStatusEl: document.getElementById("payment-status"),
-  });
-  console.log("tracking final render values:", {
-    serviceType: renderedServiceType,
-    itemType: renderedItemType,
-    paymentStatus: renderedPaymentStatus,
-  });
 
   setText("avatar-initials", name.charAt(0).toUpperCase());
   setText("customer-name", name);
   setText("order-id", `Order ID: #${order.order_code || order.id}`);
   setText("order-date", formatDate(order.created_at));
-  setText("customer-phone", order.customer_phone || "-");
   setManyText(["service-type", "serviceType", "iServiceType", "tracking-service-type"], renderedServiceType);
   setManyText(["item-type", "itemType", "iItemType", "tracking-item-type"], renderedItemType);
   setManyText(["payment-status", "paymentStatus", "iPaymentStatus", "tracking-payment-status"], renderedPaymentStatus);
@@ -292,14 +307,9 @@ function renderOrder(order) {
   setValueByLabel("Jenis item", renderedItemType);
   setValueByLabel("Status pembayaran", renderedPaymentStatus);
   setText("order-note", notes(order));
+
   renderOrderItems(order.order_items || []);
   renderPaymentSummary(order, payment);
-  console.log("rendered service type:", renderedServiceType);
-  console.log("rendered item type:", renderedItemType);
-  console.log("rendered payment status:", renderedPaymentStatus);
-  console.log("final itemType:", renderedItemType);
-  console.log("final serviceType:", renderedServiceType);
-  console.log("final paymentStatus:", renderedPaymentStatus);
 
   const badge = document.getElementById("status-badge");
   if (badge) {
@@ -308,15 +318,19 @@ function renderOrder(order) {
   }
 
   renderPhoto(order);
-  renderPaymentProof(order);
   renderTimeline(statusKey);
 
   const waNumber = window.BedjoContact?.whatsappNumber?.() || "";
-  const waMsg = encodeURIComponent(`Halo Bedjo Cleaner, saya ingin menanyakan status order #${order.order_code || order.id} atas nama ${name}.`);
+  const waMsg = encodeURIComponent(
+    `Halo Bedjo Cleaner, saya ingin menanyakan status order #${order.order_code || order.id} atas nama ${name}.`
+  );
   const waLink = document.getElementById("wa-link");
-  if (waLink) waLink.href = waNumber
-    ? `https://wa.me/${waNumber}?text=${waMsg}`
-    : `https://wa.me/?text=${waMsg}`;
+
+  if (waLink) {
+    waLink.href = waNumber
+      ? `https://wa.me/${waNumber}?text=${waMsg}`
+      : `https://wa.me/?text=${waMsg}`;
+  }
 
   loadingEl?.classList.add("hidden");
   errorEl?.classList.add("hidden");
@@ -365,15 +379,18 @@ function renderPaymentSummary(order, payment) {
   const paymentAmount = numericValue(payment?.amount);
   const orderAmount = numericValue(order.total_amount);
   const paymentStatus = normalizeStatus(payment?.status || order?.payment_status);
+
   const total = itemsTotal > 0
     ? itemsTotal
     : paymentAmount !== null
       ? paymentAmount
       : orderAmount;
+
   const storedPaid = numericValue(payment?.paid_amount);
   const paid = payment
     ? (paymentStatus === "paid" && (!storedPaid || storedPaid <= 0) ? total : (storedPaid ?? 0))
     : null;
+
   const remaining = total === null || paid === null ? null : Math.max(total - paid, 0);
 
   setText("order-total", formatRupiah(total));
@@ -395,6 +412,7 @@ function calculateItemsTotal(items) {
 function itemServiceLabel(item, itemType) {
   const relationName = cleanValue(item.services?.name);
   const relationBase = relationName === "-" ? "" : splitServiceName(relationName).base;
+
   return cleanValue(
     relationBase ||
     item.service_type ||
@@ -408,24 +426,30 @@ function itemVariant(item) {
   const serviceName = String(item.services?.name || "");
   const serviceVariant = cleanValue(splitServiceName(serviceName).variant);
   if (serviceVariant !== "-") return serviceVariant;
+
   return cleanValue(item.variant || variantFromNotes(item.notes || item.note) || item.color);
 }
 
 function itemUnitPrice(item) {
   const servicePrice = numericValue(item.services?.price);
   if (servicePrice !== null) return servicePrice;
+
   const direct = numericValue(item.price);
   if (direct !== null) return direct;
+
   const subtotal = numericValue(item.subtotal);
   const quantity = positiveNumber(item.quantity, 1);
+
   return subtotal !== null ? subtotal / quantity : null;
 }
 
 function itemUnitPriceFromRow(item) {
   const direct = numericValue(item.price);
   if (direct !== null) return direct;
+
   const subtotal = numericValue(item.subtotal);
   const quantity = positiveNumber(item.quantity, 1);
+
   return subtotal !== null ? subtotal / quantity : null;
 }
 
@@ -479,6 +503,7 @@ function variantFromNotes(note) {
 function splitServiceName(name) {
   const value = String(name || "").trim();
   const separators = [" - ", " – ", " — "];
+
   const indexes = separators
     .map(separator => ({ separator, index: value.lastIndexOf(separator) }))
     .filter(item => item.index >= 0);
@@ -486,6 +511,7 @@ function splitServiceName(name) {
   if (!value || !indexes.length) return { base: value, variant: "" };
 
   const match = indexes.sort((a, b) => b.index - a.index)[0];
+
   return {
     base: value.slice(0, match.index).trim(),
     variant: value.slice(match.index + match.separator.length).trim(),
@@ -505,37 +531,21 @@ function escapeAttr(value) {
   return escapeHtml(value).replaceAll("`", "&#096;");
 }
 
-async function fetchPaymentProofs(orderId) {
-  if (!orderId) return [];
-  try {
-    const { data, error } = await supabaseClient
-      .from("payment_proofs")
-      .select("proof_url, file_path, created_at")
-      .eq("order_id", orderId)
-      .order("created_at", { ascending: false });
-    if (error) {
-      console.warn("Tracking payment_proofs fetch error:", error);
-      return [];
-    }
-    return data || [];
-  } catch (error) {
-    console.warn("Tracking payment_proofs fetch error:", error);
-    return [];
-  }
-}
-
 async function fetchOrderPhotos(orderId) {
   if (!orderId) return [];
+
   try {
     const { data, error } = await supabaseClient
       .from("order_photos")
       .select("photo_url, file_path, created_at")
       .eq("order_id", orderId)
       .order("created_at", { ascending: true });
+
     if (error) {
       console.warn("Tracking order_photos fetch error:", error);
       return [];
     }
+
     return data || [];
   } catch (error) {
     console.warn("Tracking order_photos fetch error:", error);
@@ -558,6 +568,7 @@ function renderPhoto(order) {
   }
 
   grid.innerHTML = "";
+
   if (noPhoto) {
     noPhoto.classList.remove("hidden");
     grid.appendChild(noPhoto);
@@ -566,32 +577,13 @@ function renderPhoto(order) {
   }
 }
 
-function renderPaymentProof(order) {
-  const grid = document.getElementById("payment-proofs-grid");
-  const noProof = document.getElementById("no-payment-proof");
-  const proofs = (order.payment_proofs || []).filter(proof => proof.proof_url);
-
-  if (!grid) return;
-
-  if (proofs.length) {
-    grid.innerHTML = proofs.map((proof, index) => `
-      <img src="${escapeAttr(proof.proof_url)}" alt="Bukti pembayaran ${index + 1}" loading="lazy" />
-    `).join("");
-    return;
-  }
-
-  grid.innerHTML = "";
-  if (noProof) {
-    noProof.classList.remove("hidden");
-    grid.appendChild(noProof);
-  } else {
-    grid.innerHTML = `<div class="no-photo">Tidak ada bukti pembayaran</div>`;
-  }
-}
-
 function subscribeTrackingMedia(order) {
   if (!order?.id || !supabaseClient.channel) return;
-  if (trackingPhotosChannel) supabaseClient.removeChannel(trackingPhotosChannel);
+
+  if (trackingPhotosChannel) {
+    supabaseClient.removeChannel(trackingPhotosChannel);
+  }
+
   trackingPhotosChannel = supabaseClient
     .channel(`tracking-media-${order.id}`)
     .on("postgres_changes", {
@@ -603,29 +595,25 @@ function subscribeTrackingMedia(order) {
       order.order_photos = await fetchOrderPhotos(order.id);
       renderPhoto(order);
     })
-    .on("postgres_changes", {
-      event: "*",
-      schema: "public",
-      table: "payment_proofs",
-      filter: `order_id=eq.${order.id}`,
-    }, async () => {
-      order.payment_proofs = await fetchPaymentProofs(order.id);
-      renderPaymentProof(order);
-    })
     .subscribe();
 }
 
 function renderTimeline(statusKey) {
   const container = document.getElementById("timeline");
   if (!container) return;
+
   container.innerHTML = "";
   const activeIndex = STATUS_STEP_INDEX[statusKey] ?? 0;
 
   if (statusKey === "cancelled") {
     container.innerHTML = `
       <div class="timeline-item">
-        <div class="timeline-left"><div class="timeline-dot done" style="background:#b91c1c;border-color:#b91c1c;">x</div></div>
-        <div class="timeline-right"><p class="timeline-label done">Order dibatalkan</p></div>
+        <div class="timeline-left">
+          <div class="timeline-dot done" style="background:#b91c1c;border-color:#b91c1c;">x</div>
+        </div>
+        <div class="timeline-right">
+          <p class="timeline-label done">Order dibatalkan</p>
+        </div>
       </div>
     `;
     return;
@@ -656,9 +644,19 @@ function showLoading() {
   orderCardEl?.classList.add("hidden");
 }
 
-function showError() {
+function showError(
+  title = "Order tidak ditemukan",
+  message = "Pastikan link atau QR code yang kamu scan sudah benar."
+) {
   loadingEl?.classList.add("hidden");
   orderCardEl?.classList.add("hidden");
+
+  const titleEl = errorEl?.querySelector(".state-title");
+  const textEl = errorEl?.querySelector(".state-text");
+
+  if (titleEl) titleEl.textContent = title;
+  if (textEl) textEl.textContent = message;
+
   errorEl?.classList.remove("hidden");
   helpCardEl?.classList.remove("hidden");
 }
@@ -682,16 +680,21 @@ function finalServiceType(orderItems) {
   const values = (orderItems || [])
     .map(serviceValue)
     .filter(Boolean);
+
   return [...new Set(values)].join(", ") || "-";
 }
 
 function finalPaymentStatus(order, payment) {
   const status = payment?.status || order?.payment_status || "-";
   const normalized = normalizeStatus(status);
+
   if (normalized === "paid") return "DIBAYAR";
   if (normalized === "unpaid") return "BELUM DIBAYAR";
   if (normalized === "partial") return "SEBAGIAN";
-  return status === "-" ? "-" : String(status).charAt(0).toUpperCase() + String(status).slice(1);
+
+  return status === "-"
+    ? "-"
+    : String(status).charAt(0).toUpperCase() + String(status).slice(1);
 }
 
 function notes(order) {
@@ -707,7 +710,9 @@ function serviceFromNotes(note) {
 
 function serviceValue(item) {
   const resolved = itemServiceLabel(item, cleanValue(item.item_type));
+
   if (resolved && resolved !== "-") return resolved;
+
   return item.service_type ||
     item.service_name ||
     item.service ||
@@ -721,14 +726,18 @@ function stripServiceFromNotes(note) {
 
 function paymentStatusText(payment) {
   if (!payment) return "-";
+
   const status = normalizeStatus(payment.status);
   if (status === "paid") return "DIBAYAR";
   if (status === "partial") return "SEBAGIAN";
   if (status === "unpaid") return "BELUM DIBAYAR";
+
   const total = Number(payment.amount || 0);
   const paid = Number(payment.paid_amount || 0);
+
   if (total > 0 && paid >= total) return "DIBAYAR";
   if (paid > 0) return "SEBAGIAN";
+
   return "BELUM DIBAYAR";
 }
 
@@ -754,6 +763,7 @@ function setValueByLabel(labelText, value) {
   const normalizedLabel = normalizeLabel(labelText);
   const labels = [...document.querySelectorAll(".info-label, label, span, p")];
   const labelEl = labels.find(el => normalizeLabel(el.textContent) === normalizedLabel);
+
   if (!labelEl) {
     console.log("tracking label not found:", labelText);
     return;
@@ -761,6 +771,7 @@ function setValueByLabel(labelText, value) {
 
   const row = labelEl.closest(".info-row") || labelEl.parentElement;
   const valueEl = row?.querySelector(".info-value");
+
   if (valueEl) {
     valueEl.textContent = value || "-";
     return;
@@ -784,16 +795,16 @@ function normalizeStatus(status) {
   return String(status || "pending").toLowerCase().replaceAll(" ", "_").replaceAll("-", "_");
 }
 
-function normalizeTrackingCode(value) {
-  return String(value || "")
-    .trim()
-    .replace(/^order\s*(id|code)?\s*:?\s*#?/i, "")
-    .replace(/^#/, "")
-    .trim()
-    .toUpperCase();
+function normalizeTrackingToken(value) {
+  return String(value || "").trim();
 }
 
 function formatDate(isoString) {
   if (!isoString) return "-";
-  return new Date(isoString).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+
+  return new Date(isoString).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
