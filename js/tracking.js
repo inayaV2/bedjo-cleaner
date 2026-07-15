@@ -30,7 +30,6 @@ const orderCardEl = document.getElementById("order-card");
 const helpCardEl = document.getElementById("help-card");
 const formEl = document.getElementById("tracking-form");
 const inputEl = document.getElementById("tracking-input");
-let trackingPhotosChannel = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   ensureTrackingDom();
@@ -40,6 +39,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const oldCode = normalizeTrackingToken(
     params.get("code") || params.get("order_id") || params.get("id")
   );
+
+  // Bersihkan URL agar token tidak menetap di address bar / history browser.
+  if (window.location.search) {
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
 
   if (oldCode && !token) {
     showError(
@@ -74,7 +78,6 @@ async function loadOrder(value) {
   showLoading();
 
   const token = normalizeTrackingToken(value);
-  console.log("tracking token:", token);
 
   if (!token) {
     showError(
@@ -84,35 +87,24 @@ async function loadOrder(value) {
     return;
   }
 
-  const { data: order, error } = await fetchTrackingOrder(token);
+  const data = await fetchTrackingData(token);
 
-  if (error) {
-    console.error("Tracking fetch error:", error);
+  if (!data || !data.order) {
+    // Pesan generik untuk token invalid maupun order tidak ditemukan.
     showError("Order tidak ditemukan", "Pastikan link atau QR code yang kamu scan sudah benar.");
     return;
   }
 
-  if (!order) {
-    showError("Order tidak ditemukan", "Pastikan link atau QR code yang kamu scan sudah benar.");
-    return;
-  }
+  const order = data.order;
+  const orderItems = (data.items || []).map(item => ({
+    ...item,
+    services: item.service || null,
+  }));
+  const payment = data.payment || null;
+  const payments = payment ? [payment] : [];
+  const branch = data.branch || null;
+  const orderPhotos = data.photos || [];
 
-  console.log("tracking order.id:", order.id);
-  console.log("fetched order:", order);
-
-  const [orderItems, payments, branch, orderPhotos] = await Promise.all([
-    fetchOrderItems(order.id),
-    fetchPayments(order.id),
-    fetchBranch(order.branch_id),
-    fetchOrderPhotos(order.id),
-  ]);
-
-  console.log("fetched order_items:", orderItems);
-  console.log("fetched payments:", payments);
-  console.log("fetched branch:", branch);
-  console.log("fetched order_photos:", orderPhotos);
-
-  subscribeTrackingMedia(order);
   renderTracking(order, orderItems, payments, branch, orderPhotos);
   requestAnimationFrame(() => renderTracking(order, orderItems, payments, branch, orderPhotos));
 }
@@ -123,167 +115,27 @@ function renderTracking(order, orderItems = [], payments = [], branch = null, ph
   order.branches = branch || null;
   order.order_photos = photos || [];
 
-  console.log("tracking order_items:", order.order_items);
-  console.log("tracking payment:", trackingPayment(order));
-
   renderOrder(order);
 }
 
-async function fetchTrackingOrder(token) {
-  return supabaseClient
-    .from("orders")
-    .select(`
-      id,
-      order_code,
-      public_tracking_token,
-      customer_name,
-      status,
-      branch_id,
-      total_amount,
-      created_at
-    `)
-    .eq("public_tracking_token", token)
-    .maybeSingle();
-}
+// Satu POST ke Edge Function public-tracking (verify_jwt=false).
+// Tidak ada query langsung ke tabel, tidak ada service-role, tidak ada URL publik.
+async function fetchTrackingData(token) {
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/public-tracking`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
 
-async function fetchBranch(branchId) {
-  if (!branchId) return null;
+    if (!response.ok) {
+      return null;
+    }
 
-  const { data, error } = await supabaseClient
-    .from("branches")
-    .select("id, name")
-    .eq("id", branchId)
-    .maybeSingle();
-
-  if (error) {
-    console.warn("Tracking branch fetch error:", error);
+    return await response.json();
+  } catch (error) {
     return null;
   }
-
-  return data || null;
-}
-
-async function fetchOrderItems(orderId) {
-  if (!orderId) return [];
-
-  const simple = await supabaseClient
-    .from("order_items")
-    .select("*")
-    .eq("order_id", orderId)
-    .order("id", { ascending: true });
-
-  if (simple.error) {
-    console.warn("Tracking order_items fetch error:", simple.error);
-    return [];
-  }
-
-  const items = simple.data || [];
-  console.log("raw tracking order_items:", items);
-
-  await attachServices(items);
-  return items;
-}
-
-async function attachServices(items) {
-  const serviceIds = [...new Set(items.map(item => item.service_id).filter(Boolean))];
-  let services = [];
-
-  if (serviceIds.length) {
-    const { data, error } = await supabaseClient
-      .from("services")
-      .select("id, name, price, category, description")
-      .in("id", serviceIds);
-
-    if (error) {
-      console.warn("Tracking services fetch error:", error);
-    } else {
-      services = data || [];
-    }
-  }
-
-  const unresolvedItems = items.filter(item =>
-    !item.service_id ||
-    !services.some(service => String(service.id) === String(item.service_id))
-  );
-
-  const fallbackServices = await fetchFallbackServices(unresolvedItems);
-  const allServices = mergeServices(services, fallbackServices);
-  const map = new Map(allServices.map(service => [String(service.id), service]));
-
-  items.forEach(item => {
-    item.services = map.get(String(item.service_id)) || matchServiceByItem(allServices, item) || null;
-  });
-}
-
-async function fetchFallbackServices(items) {
-  const categories = [...new Set((items || [])
-    .map(item => cleanValue(item.item_type))
-    .filter(value => value !== "-"))];
-
-  if (!categories.length) return [];
-
-  const chunks = await Promise.all(categories.map(category =>
-    supabaseClient
-      .from("services")
-      .select("id, name, price, category, description")
-      .eq("category", category)
-      .then(result => {
-        if (result.error) {
-          console.warn("Tracking fallback services fetch error:", result.error);
-          return [];
-        }
-        return result.data || [];
-      })
-  ));
-
-  return chunks.flat();
-}
-
-function mergeServices(primary, fallback) {
-  const seen = new Set();
-
-  return [...(primary || []), ...(fallback || [])].filter(service => {
-    const key = service?.id ? `id:${service.id}` : `name:${service?.name || ""}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-function matchServiceByItem(services, item) {
-  const itemType = normalizeLabel(item.item_type);
-  const price = itemUnitPriceFromRow(item);
-  const variant = normalizeLabel(item.variant || variantFromNotes(item.notes || item.note) || item.color);
-
-  return (services || []).find(service => {
-    const sameCategory = itemType && normalizeLabel(service.category) === itemType;
-    const samePrice = price !== null && numericValue(service.price) === price;
-    const sameVariant = !variant || normalizeLabel(service.name).includes(variant);
-    return sameCategory && samePrice && sameVariant;
-  }) || (services || []).find(service => {
-    const sameCategory = itemType && normalizeLabel(service.category) === itemType;
-    const samePrice = price !== null && numericValue(service.price) === price;
-    return sameCategory && samePrice;
-  }) || (services || []).find(service =>
-    itemType && normalizeLabel(service.category) === itemType
-  ) || null;
-}
-
-async function fetchPayments(orderId) {
-  if (!orderId) return [];
-
-  const { data, error } = await supabaseClient
-    .from("payments")
-    .select("id, order_id, method, amount, paid_amount, status, created_at")
-    .eq("order_id", orderId)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.warn("Tracking payments fetch error:", error);
-    return [];
-  }
-
-  return data || [];
 }
 
 function renderOrder(order) {
@@ -531,39 +383,23 @@ function escapeAttr(value) {
   return escapeHtml(value).replaceAll("`", "&#096;");
 }
 
-async function fetchOrderPhotos(orderId) {
-  if (!orderId) return [];
-
-  try {
-    const { data, error } = await supabaseClient
-      .from("order_photos")
-      .select("photo_url, file_path, created_at")
-      .eq("order_id", orderId)
-      .order("created_at", { ascending: true });
-
-    if (error) {
-      console.warn("Tracking order_photos fetch error:", error);
-      return [];
-    }
-
-    return data || [];
-  } catch (error) {
-    console.warn("Tracking order_photos fetch error:", error);
-    return [];
-  }
-}
-
 function renderPhoto(order) {
   const grid = document.getElementById("order-photos-grid");
   const noPhoto = document.getElementById("no-photo");
-  const photos = (order.order_photos || []).filter(photo => photo.photo_url);
 
   if (!grid) return;
 
+  const photos = order.order_photos || [];
+
   if (photos.length) {
-    grid.innerHTML = photos.map((photo, index) => `
-      <img src="${escapeAttr(photo.photo_url)}" alt="Foto item ${index + 1}" loading="lazy" />
-    `).join("");
+    // Hanya memakai signed_url dari response Edge Function; tanpa fallback URL publik.
+    grid.innerHTML = photos.map((photo, index) => {
+      const url = typeof photo.signed_url === "string" ? photo.signed_url.trim() : "";
+      if (!url) {
+        return `<div class="no-photo">Foto tidak tersedia</div>`;
+      }
+      return `<img src="${escapeAttr(url)}" alt="Foto item ${index + 1}" loading="lazy" />`;
+    }).join("");
     return;
   }
 
@@ -575,27 +411,6 @@ function renderPhoto(order) {
   } else {
     grid.innerHTML = `<div class="no-photo">Tidak ada foto</div>`;
   }
-}
-
-function subscribeTrackingMedia(order) {
-  if (!order?.id || !supabaseClient.channel) return;
-
-  if (trackingPhotosChannel) {
-    supabaseClient.removeChannel(trackingPhotosChannel);
-  }
-
-  trackingPhotosChannel = supabaseClient
-    .channel(`tracking-media-${order.id}`)
-    .on("postgres_changes", {
-      event: "*",
-      schema: "public",
-      table: "order_photos",
-      filter: `order_id=eq.${order.id}`,
-    }, async () => {
-      order.order_photos = await fetchOrderPhotos(order.id);
-      renderPhoto(order);
-    })
-    .subscribe();
 }
 
 function renderTimeline(statusKey) {
