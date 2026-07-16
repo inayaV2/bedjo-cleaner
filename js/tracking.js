@@ -96,6 +96,8 @@ async function loadOrder(value) {
   }
 
   const order = data.order;
+  // remaining_amount dihitung server-side oleh Edge Function.
+  order.remaining_amount = data.remaining_amount;
   const orderItems = (data.items || []).map(item => ({
     ...item,
     services: item.service || null,
@@ -173,8 +175,9 @@ function renderOrder(order) {
   renderTimeline(statusKey);
 
   const waNumber = window.BedjoContact?.whatsappNumber?.() || "";
+  // Hanya order code (bukan token public tracking) yang dimasukkan ke pesan.
   const waMsg = encodeURIComponent(
-    `Halo Bedjo Cleaner, saya ingin menanyakan status order #${order.order_code || order.id} atas nama ${name}.`
+    `Halo Bedjo Cleaner, saya membutuhkan bantuan terkait order ${order.order_code || order.id}.`
   );
   const waLink = document.getElementById("wa-link");
 
@@ -227,24 +230,28 @@ function renderOrderItems(items) {
 }
 
 function renderPaymentSummary(order, payment) {
-  const itemsTotal = calculateItemsTotal(order.order_items || []);
-  const paymentAmount = numericValue(payment?.amount);
-  const orderAmount = numericValue(order.total_amount);
-  const paymentStatus = normalizeStatus(payment?.status || order?.payment_status);
+  // Semua nominal berasal dari Edge Function (bukan REST langsung).
+  const subtotal = numericValue(order.subtotal_amount) ?? 0;
+  const taxPercent = numericValue(order.tax_percent) ?? 0;
+  const taxAmount = numericValue(order.tax_amount) ?? 0;
+  const deliveryFee = numericValue(order.delivery_fee) ?? 0;
+  const total = numericValue(order.total_amount) ?? 0;
+  const paid = numericValue(payment?.paid_amount) ?? 0;
+  const serverRemaining = numericValue(order.remaining_amount);
+  const remaining = serverRemaining !== null
+    ? serverRemaining
+    : Math.max(total - paid, 0);
 
-  const total = itemsTotal > 0
-    ? itemsTotal
-    : paymentAmount !== null
-      ? paymentAmount
-      : orderAmount;
+  const taxLabelEl = document.getElementById("tax-label");
+  if (taxLabelEl) {
+    taxLabelEl.textContent = taxPercent > 0
+      ? `Pajak (${taxPercent}%)`
+      : "Pajak";
+  }
 
-  const storedPaid = numericValue(payment?.paid_amount);
-  const paid = payment
-    ? (paymentStatus === "paid" && (!storedPaid || storedPaid <= 0) ? total : (storedPaid ?? 0))
-    : null;
-
-  const remaining = total === null || paid === null ? null : Math.max(total - paid, 0);
-
+  setText("subtotal-amount", formatRupiah(subtotal));
+  setText("tax-amount", formatRupiah(taxAmount));
+  setText("delivery-fee", formatRupiah(deliveryFee));
   setText("order-total", formatRupiah(total));
   setText("paid-amount", formatRupiah(paid));
   setText("remaining-amount", formatRupiah(remaining));

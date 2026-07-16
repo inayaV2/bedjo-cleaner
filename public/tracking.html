@@ -80,7 +80,19 @@
       <div class="payment-summary">
         <p class="payment-summary-title">Ringkasan Pembayaran</p>
         <div class="info-row">
-          <span class="info-label">Total biaya</span>
+          <span class="info-label">Subtotal</span>
+          <span class="info-value" id="subtotal-amount">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label" id="tax-label">Pajak</span>
+          <span class="info-value" id="tax-amount">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Jasa antar</span>
+          <span class="info-value" id="delivery-fee">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Total tagihan</span>
           <span class="info-value" id="order-total">-</span>
         </div>
         <div class="info-row">
@@ -132,7 +144,7 @@
 
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="../js/supabase.js?v=20260714-token"></script>
-  <script defer src="../js/app-config.js?v=20260714-token"></script>
-  <script defer src="../js/tracking.js?v=20260715-signed"></script>
+  <script defer src="../js/app-config.js?v=20260716-charges"></script>
+  <script defer src="../js/tracking.js?v=20260716-charges"></script>
 </body>
 </html>
