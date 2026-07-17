@@ -1,17 +1,23 @@
+// Mapping status database -> label bisnis, selaras dengan Order Detail Flutter:
+// pending=Menunggu, on_process=Sedang Diproses, completed=Selesai,
+// picked_up=Barang Sudah Diambil, cancelled=Dibatalkan.
 const STATUS_CONFIG = {
-  pending: { label: "Diterima", badgeClass: "badge-pending" },
-  received: { label: "Diterima", badgeClass: "badge-pending" },
-  on_process: { label: "Diproses", badgeClass: "badge-process" },
-  processing: { label: "Diproses", badgeClass: "badge-process" },
-  process: { label: "Diproses", badgeClass: "badge-process" },
+  pending: { label: "Menunggu", badgeClass: "badge-pending" },
+  on_process: { label: "Sedang Diproses", badgeClass: "badge-process" },
   completed: { label: "Selesai", badgeClass: "badge-completed" },
+  picked_up: { label: "Barang Sudah Diambil", badgeClass: "badge-completed" },
   cancelled: { label: "Dibatalkan", badgeClass: "badge-cancelled" },
+  // Alias legacy (kemungkinan data lama), dipetakan ke label bisnis yang sama.
+  received: { label: "Menunggu", badgeClass: "badge-pending" },
+  processing: { label: "Sedang Diproses", badgeClass: "badge-process" },
+  process: { label: "Sedang Diproses", badgeClass: "badge-process" },
 };
 
 const TIMELINE_STEPS = [
-  { key: "received", label: "Diterima" },
-  { key: "processing", label: "Diproses" },
+  { key: "pending", label: "Menunggu" },
+  { key: "on_process", label: "Sedang Diproses" },
   { key: "completed", label: "Selesai" },
+  { key: "picked_up", label: "Barang Sudah Diambil" },
 ];
 
 const STATUS_STEP_INDEX = {
@@ -21,6 +27,7 @@ const STATUS_STEP_INDEX = {
   processing: 1,
   process: 1,
   completed: 2,
+  picked_up: 3,
   cancelled: -1,
 };
 
@@ -212,17 +219,26 @@ function renderOrderItems(items) {
     const note = itemNote(item);
     const title = [service, variant].filter(value => value !== "-").join(" - ") || itemType;
 
+    // Item cancelled tetap ditampilkan (tidak dihilangkan), hanya ditandai
+    // redup + line-through + badge, konsisten dengan Order Detail Flutter.
+    const isCancelled = String(item.status || "").trim().toLowerCase() === "cancelled";
+    const valueClass = isCancelled ? " order-item-value--cancelled" : "";
+    const cancelReason = isCancelled ? cleanValue(item.cancel_reason) : "-";
+    const cancelledAt = isCancelled ? formatDate(item.cancelled_at) : "-";
+
     return `
-      <article class="order-item-detail">
+      <article class="order-item-detail${isCancelled ? " order-item-detail--cancelled" : ""}">
         <p class="order-item-number">Item ${index + 1}</p>
-        <p class="order-item-title">${escapeHtml(title)}</p>
+        <p class="order-item-title">${escapeHtml(title)}${isCancelled ? ' <span class="order-item-cancelled-badge">Dibatalkan</span>' : ""}</p>
         <dl class="order-item-fields">
           <div><dt>Jenis item</dt><dd>${escapeHtml(itemType)}</dd></div>
-          <div><dt>Layanan</dt><dd>${escapeHtml(service)}</dd></div>
-          <div><dt>Variant</dt><dd>${escapeHtml(variant)}</dd></div>
-          <div><dt>Qty</dt><dd>${quantity} x ${escapeHtml(formatRupiah(unitPrice, "-"))}</dd></div>
-          <div><dt>Subtotal</dt><dd>${escapeHtml(formatRupiah(subtotal, "-"))}</dd></div>
+          <div><dt>Layanan</dt><dd class="${valueClass}">${escapeHtml(service)}</dd></div>
+          <div><dt>Variant</dt><dd class="${valueClass}">${escapeHtml(variant)}</dd></div>
+          <div><dt>Qty</dt><dd class="${valueClass}">${quantity} x ${escapeHtml(formatRupiah(unitPrice, "-"))}</dd></div>
+          <div><dt>Subtotal</dt><dd class="${valueClass}">${escapeHtml(formatRupiah(subtotal, "-"))}</dd></div>
           ${note !== "-" ? `<div class="order-item-note"><dt>Catatan</dt><dd>${escapeHtml(note)}</dd></div>` : ""}
+          ${isCancelled ? `<div class="order-item-cancel-info"><dt>Alasan dibatalkan</dt><dd>${escapeHtml(cancelReason)}</dd></div>` : ""}
+          ${isCancelled && cancelledAt !== "-" ? `<div class="order-item-cancel-info"><dt>Waktu dibatalkan</dt><dd>${escapeHtml(cancelledAt)}</dd></div>` : ""}
         </dl>
       </article>
     `;

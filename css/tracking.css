@@ -376,6 +376,46 @@ body {
   border-top: 1px solid var(--gray-border);
 }
 
+/* ── ITEM CANCELLED (tetap tampil, hanya ditandai) ───────────── */
+.order-item-detail--cancelled {
+  opacity: 0.62;
+  background-color: #fef2f2;
+  border-color: #fca5a5;
+}
+
+.order-item-cancelled-badge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--radius-badge);
+  background-color: var(--red-badge-bg);
+  color: var(--red-badge-text);
+  border: 1px solid #fca5a5;
+  vertical-align: middle;
+  /* Catatan: opacity kartu induk (.order-item-detail--cancelled) tetap
+     memengaruhi elemen ini secara visual (batasan CSS stacking-context);
+     badge tetap cukup kontras karena background merah solid + border. */
+}
+
+.order-item-fields dd.order-item-value--cancelled {
+  text-decoration: line-through;
+  color: var(--text-secondary);
+}
+
+.order-item-fields .order-item-cancel-info {
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--gray-border);
+}
+
+.order-item-fields .order-item-cancel-info dd {
+  color: #b91c1c;
+}
+
 .order-item-empty {
   padding: 14px;
   border: 1px dashed var(--gray-border);
