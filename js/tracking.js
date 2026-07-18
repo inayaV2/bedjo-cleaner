@@ -105,6 +105,10 @@ async function loadOrder(value) {
   const order = data.order;
   // remaining_amount dihitung server-side oleh Edge Function.
   order.remaining_amount = data.remaining_amount;
+  // Cabang asal order -- dipakai sebagai fallback nama cabang pengerjaan
+  // untuk item Cuci/null (bukan nama cabang tertentu yang di-hardcode).
+  order.origin_branch_id = data.origin_branch_id ?? null;
+  order.origin_branch_name = data.origin_branch_name ?? data.branch?.name ?? null;
   const orderItems = (data.items || []).map(item => ({
     ...item,
     services: item.service || null,
@@ -169,7 +173,7 @@ function renderOrder(order) {
   setValueByLabel("Status pembayaran", renderedPaymentStatus);
   setText("order-note", notes(order));
 
-  renderOrderItems(order.order_items || []);
+  renderOrderItems(order.order_items || [], order.origin_branch_name);
   renderPaymentSummary(order, payment);
 
   const badge = document.getElementById("status-badge");
@@ -200,7 +204,48 @@ function renderOrder(order) {
   helpCardEl?.classList.remove("hidden");
 }
 
-function renderOrderItems(items) {
+// handling_type kosong/tidak valid (data lama) -> 'cuci'. Sama persis
+// dengan normalizeOrderItemHandlingType di order_status.dart dan
+// normalizeHandlingType di Edge Function.
+function itemHandlingType(item) {
+  return String(item?.handling_type ?? "").trim().toLowerCase() === "service"
+    ? "service"
+    : "cuci";
+}
+
+function itemHandlingLabel(item) {
+  return itemHandlingType(item) === "service" ? "Service" : "Cuci";
+}
+
+// TIDAK PERNAH hardcode nama cabang manapun. Prioritas:
+// 1. handling_branch_name dari API (sudah di-resolve server-side).
+// 2. handling_branch_id null -> cabang asal order (originBranchName).
+// 3. handling_branch_id ada tapi tidak resolve -> "Cabang tidak diketahui".
+function itemHandlingBranchLabel(item, originBranchName) {
+  const resolvedName = cleanValue(item?.handling_branch_name);
+  if (resolvedName !== "-") {
+    return resolvedName;
+  }
+
+  const handlingBranchId = item?.handling_branch_id;
+  const hasHandlingBranchId = handlingBranchId !== null &&
+    handlingBranchId !== undefined &&
+    String(handlingBranchId).trim() !== "";
+
+  if (!hasHandlingBranchId) {
+    return cleanValue(originBranchName);
+  }
+
+  return "Cabang tidak diketahui";
+}
+
+function itemStatusLabel(item) {
+  return String(item?.status || "").trim().toLowerCase() === "cancelled"
+    ? "Dibatalkan"
+    : "Aktif";
+}
+
+function renderOrderItems(items, originBranchName = null) {
   const container = document.getElementById("order-items-list");
   if (!container) return;
 
@@ -212,6 +257,8 @@ function renderOrderItems(items) {
   container.innerHTML = items.map((item, index) => {
     const itemType = cleanValue(item.item_type || item.item_name || item.name);
     const service = itemServiceLabel(item, itemType);
+    const handlingLabel = itemHandlingLabel(item);
+    const handlingBranchLabel = itemHandlingBranchLabel(item, originBranchName);
     const variant = itemVariant(item);
     const quantity = positiveNumber(item.quantity, 1);
     const unitPrice = itemUnitPrice(item);
@@ -233,9 +280,12 @@ function renderOrderItems(items) {
         <dl class="order-item-fields">
           <div><dt>Jenis item</dt><dd>${escapeHtml(itemType)}</dd></div>
           <div><dt>Layanan</dt><dd class="${valueClass}">${escapeHtml(service)}</dd></div>
+          <div><dt>Jenis Layanan</dt><dd class="${valueClass}">${escapeHtml(handlingLabel)}</dd></div>
+          <div><dt>Cabang Pengerjaan</dt><dd class="${valueClass}">${escapeHtml(handlingBranchLabel)}</dd></div>
           <div><dt>Variant</dt><dd class="${valueClass}">${escapeHtml(variant)}</dd></div>
           <div><dt>Qty</dt><dd class="${valueClass}">${quantity} x ${escapeHtml(formatRupiah(unitPrice, "-"))}</dd></div>
           <div><dt>Subtotal</dt><dd class="${valueClass}">${escapeHtml(formatRupiah(subtotal, "-"))}</dd></div>
+          <div><dt>Status</dt><dd class="${valueClass}">${escapeHtml(itemStatusLabel(item))}</dd></div>
           ${note !== "-" ? `<div class="order-item-note"><dt>Catatan</dt><dd>${escapeHtml(note)}</dd></div>` : ""}
           ${isCancelled ? `<div class="order-item-cancel-info"><dt>Alasan dibatalkan</dt><dd>${escapeHtml(cancelReason)}</dd></div>` : ""}
           ${isCancelled && cancelledAt !== "-" ? `<div class="order-item-cancel-info"><dt>Waktu dibatalkan</dt><dd>${escapeHtml(cancelledAt)}</dd></div>` : ""}
@@ -243,6 +293,30 @@ function renderOrderItems(items) {
       </article>
     `;
   }).join("");
+}
+
+// Diskon lama tanpa field discount_* (order lama) -> discount_enabled
+// undefined/null dianggap false, discount_amount undefined/null dianggap 0 ->
+// resolveDiscountDisplay() mengembalikan null -> row disembunyikan. Dipisah
+// sebagai fungsi murni (bukan langsung memanipulasi DOM) supaya bisa diuji
+// ringan tanpa perlu render halaman penuh.
+function resolveDiscountDisplay(order) {
+  const enabled = order?.discount_enabled === true;
+  const amount = numericValue(order?.discount_amount) ?? 0;
+  if (!enabled || amount <= 0) {
+    return null;
+  }
+  const type = order?.discount_type;
+  const value = numericValue(order?.discount_value) ?? 0;
+  const label = type === "percent"
+    ? `Diskon ${formatPercentValue(value)}%`
+    : "Diskon";
+  return { label, formattedValue: `-${formatRupiah(amount)}` };
+}
+
+function formatPercentValue(value) {
+  const number = numericValue(value) ?? 0;
+  return Number.isInteger(number) ? String(number) : String(number);
 }
 
 function renderPaymentSummary(order, payment) {
@@ -258,12 +332,24 @@ function renderPaymentSummary(order, payment) {
     ? serverRemaining
     : Math.max(total - paid, 0);
 
+  const discountRowEl = document.getElementById("discount-row");
+  const discount = resolveDiscountDisplay(order);
+  if (discount) {
+    discountRowEl?.classList.remove("hidden");
+    setText("discount-label", discount.label);
+    setText("discount-amount", discount.formattedValue);
+  } else {
+    discountRowEl?.classList.add("hidden");
+  }
+
   const taxLabelEl = document.getElementById("tax-label");
   if (taxLabelEl) {
     taxLabelEl.textContent = taxPercent > 0
       ? `Pajak (${taxPercent}%)`
       : "Pajak";
   }
+  document.getElementById("tax-row")?.classList.toggle("hidden", taxAmount <= 0);
+  document.getElementById("delivery-row")?.classList.toggle("hidden", deliveryFee <= 0);
 
   setText("subtotal-amount", formatRupiah(subtotal));
   setText("tax-amount", formatRupiah(taxAmount));
