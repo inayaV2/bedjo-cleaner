@@ -149,6 +149,43 @@ test("status item: aktif vs dibatalkan", () => {
   assert.equal(mod.itemStatusLabel({}), "Aktif");
 });
 
+
+test("business line label mendukung semua lini dan fallback data lama", () => {
+  assert.equal(mod.itemBusinessLineLabel({ services: { business_line: "homecare" } }), "Homecare");
+  assert.equal(mod.itemBusinessLineLabel({ services: { business_line: "helmet" } }), "Helmet");
+  assert.equal(mod.itemBusinessLineLabel({ services: { business_line: "autocare_mobil" } }), "Autocare Mobil");
+  assert.equal(mod.itemBusinessLineLabel({ services: { business_line: "autocare_motor" } }), "Autocare Motor");
+  assert.equal(mod.itemBusinessLineLabel({ services: { business_line: "" } }), "Bedjo Cleaner");
+  assert.equal(mod.itemBusinessLineLabel({}), "Bedjo Cleaner");
+});
+
+test("Premium Wash Motor tampil sebagai Premium Wash tanpa mengubah data sumber", () => {
+  assert.equal(
+    mod.itemServiceLabel({ services: { name: "Premium Wash (Motor)", business_line: "autocare_motor" } }, "Motor"),
+    "Premium Wash",
+  );
+  assert.equal(
+    mod.itemServiceLabel({ services: { name: "Premium Wash (Motor)", business_line: "autocare_mobil" } }, "Mobil"),
+    "Premium Wash (Motor)",
+  );
+});
+
+test("service description tampil sebagai Keterangan hanya jika tidak kosong", () => {
+  assert.equal(
+    mod.itemDescription({ services: { description: "Kategori: tas sedang, helm + jaket, kresek belanja" } }),
+    "Kategori: tas sedang, helm + jaket, kresek belanja",
+  );
+  assert.equal(mod.itemDescription({ services: { description: null } }), "-");
+  assert.equal(mod.itemDescription({ services: { description: "   " } }), "-");
+});
+
+test("description helper aman untuk Homecare/Helmet/Autocare dan data legacy", () => {
+  assert.equal(mod.itemDescription({ services: { business_line: "homecare", description: "Sofa 1 sheet" } }), "Sofa 1 sheet");
+  assert.equal(mod.itemDescription({ services: { business_line: "helmet", description: "Kategori: 1 helm" } }), "Kategori: 1 helm");
+  assert.equal(mod.itemDescription({ services: { business_line: "autocare_mobil", description: "Small car" } }), "Small car");
+  assert.equal(mod.itemDescription({ services: { business_line: "autocare_motor", description: null } }), "-");
+  assert.equal(mod.itemDescription({}), "-");
+});
 test("tidak ada literal hardcode Ciwalk di source tracking.js", () => {
   assert.ok(
     !code.includes("Ciwalk"),

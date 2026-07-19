@@ -256,6 +256,7 @@ function renderOrderItems(items, originBranchName = null) {
 
   container.innerHTML = items.map((item, index) => {
     const itemType = cleanValue(item.item_type || item.item_name || item.name);
+    const businessLine = itemBusinessLineLabel(item);
     const service = itemServiceLabel(item, itemType);
     const handlingLabel = itemHandlingLabel(item);
     const handlingBranchLabel = itemHandlingBranchLabel(item, originBranchName);
@@ -264,6 +265,7 @@ function renderOrderItems(items, originBranchName = null) {
     const unitPrice = itemUnitPrice(item);
     const subtotal = itemSubtotal(item, unitPrice, quantity);
     const note = itemNote(item);
+    const description = itemDescription(item);
     const title = [service, variant].filter(value => value !== "-").join(" - ") || itemType;
 
     // Item cancelled tetap ditampilkan (tidak dihilangkan), hanya ditandai
@@ -278,6 +280,7 @@ function renderOrderItems(items, originBranchName = null) {
         <p class="order-item-number">Item ${index + 1}</p>
         <p class="order-item-title">${escapeHtml(title)}${isCancelled ? ' <span class="order-item-cancelled-badge">Dibatalkan</span>' : ""}</p>
         <dl class="order-item-fields">
+          <div><dt>Jenis Usaha</dt><dd>${escapeHtml(businessLine)}</dd></div>
           <div><dt>Jenis item</dt><dd>${escapeHtml(itemType)}</dd></div>
           <div><dt>Layanan</dt><dd class="${valueClass}">${escapeHtml(service)}</dd></div>
           <div><dt>Jenis Layanan</dt><dd class="${valueClass}">${escapeHtml(handlingLabel)}</dd></div>
@@ -286,6 +289,7 @@ function renderOrderItems(items, originBranchName = null) {
           <div><dt>Qty</dt><dd class="${valueClass}">${quantity} x ${escapeHtml(formatRupiah(unitPrice, "-"))}</dd></div>
           <div><dt>Subtotal</dt><dd class="${valueClass}">${escapeHtml(formatRupiah(subtotal, "-"))}</dd></div>
           <div><dt>Status</dt><dd class="${valueClass}">${escapeHtml(itemStatusLabel(item))}</dd></div>
+          ${description !== "-" ? `<div class="order-item-description"><dt>Keterangan</dt><dd>${escapeHtml(description)}</dd></div>` : ""}
           ${note !== "-" ? `<div class="order-item-note"><dt>Catatan</dt><dd>${escapeHtml(note)}</dd></div>` : ""}
           ${isCancelled ? `<div class="order-item-cancel-info"><dt>Alasan dibatalkan</dt><dd>${escapeHtml(cancelReason)}</dd></div>` : ""}
           ${isCancelled && cancelledAt !== "-" ? `<div class="order-item-cancel-info"><dt>Waktu dibatalkan</dt><dd>${escapeHtml(cancelledAt)}</dd></div>` : ""}
@@ -370,17 +374,54 @@ function calculateItemsTotal(items) {
   }, 0);
 }
 
+// business_line null/kosong (data lama sebelum STEP 12A, atau relasi
+// service tidak resolve) -> fallback "Bedjo Cleaner", sama persis dengan
+// serviceBusinessLine/businessLineLabel di lib/features/orders/order_status.dart.
+function itemBusinessLineLabel(item) {
+  const value = String(item.services?.business_line || "").trim().toLowerCase();
+  switch (value) {
+    case "homecare":
+      return "Homecare";
+    case "helmet":
+      return "Helmet";
+    case "autocare_mobil":
+      return "Autocare Mobil";
+    case "autocare_motor":
+      return "Autocare Motor";
+    default:
+      return "Bedjo Cleaner";
+  }
+}
+
+// "Premium Wash (Motor)" -> "Premium Wash" di tracking (Section 4 STEP
+// 12B) -- nama database tetap dipertahankan sebagai unique key, hanya
+// tampilan yang disederhanakan. Sama persis dengan displayServiceName di
+// lib/features/orders/order_status.dart.
+function displayServiceName(rawBaseName, businessLine) {
+  if (businessLine !== "autocare_motor") return rawBaseName;
+  return rawBaseName.replace(" (Motor)", "").trim();
+}
+
 function itemServiceLabel(item, itemType) {
   const relationName = cleanValue(item.services?.name);
   const relationBase = relationName === "-" ? "" : splitServiceName(relationName).base;
+  const businessLine = String(item.services?.business_line || "").trim().toLowerCase();
 
   return cleanValue(
-    relationBase ||
-    item.service_type ||
-    item.service_name ||
-    item.service ||
-    serviceFromNotes(item.notes || item.note)
+    displayServiceName(
+      relationBase ||
+      item.service_type ||
+      item.service_name ||
+      item.service ||
+      serviceFromNotes(item.notes || item.note) ||
+      "",
+      businessLine,
+    ) || "-"
   );
+}
+
+function itemDescription(item) {
+  return cleanValue(item.services?.description || item.service?.description || item.description);
 }
 
 function itemVariant(item) {
