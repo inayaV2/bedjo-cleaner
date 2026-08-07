@@ -1,0 +1,129 @@
+/* =============================================
+   admin-cleanup.css — Arsip & Cleanup page
+   Supplements admin-dashboard.css + admin-export.css
+   ============================================= */
+
+.cleanup-empty {
+  font-size: 13px;
+  color: var(--text-sub);
+  padding: 12px 0;
+}
+
+.cleanup-list-error {
+  display: none;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.cleanup-list-error:not(:empty) {
+  display: block;
+}
+
+.verifications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.verification-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  flex-wrap: wrap;
+}
+
+.verification-branch {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.verification-period {
+  font-size: 13px;
+  color: var(--text-main);
+  margin-top: 2px;
+}
+
+.verification-meta {
+  font-size: 12px;
+  color: var(--text-sub);
+  margin-top: 2px;
+}
+
+.retention-ready {
+  color: var(--green);
+  font-weight: 600;
+}
+
+.retention-pending {
+  color: #a16207;
+  font-weight: 600;
+}
+
+.verification-action .btn-preset:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Preview modal ── */
+.cleanup-modal {
+  max-width: 460px;
+}
+
+.preview-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13.5px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.preview-missing {
+  color: #a16207;
+}
+
+.preview-total {
+  font-weight: 700;
+  color: var(--text-main);
+  border-bottom: none;
+  padding-top: 12px;
+}
+
+.cleanup-warning {
+  font-size: 13px;
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 14px 0;
+}
+
+.cleanup-danger-btn {
+  background: #dc2626;
+}
+
+.cleanup-danger-btn:hover {
+  background: #b91c1c;
+}
+
+.cleanup-danger-btn:disabled {
+  background: var(--gray);
+  cursor: not-allowed;
+  opacity: 0.6;
+}

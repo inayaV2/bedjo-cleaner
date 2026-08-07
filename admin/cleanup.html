@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Bedjo Cleaner – Arsip & Cleanup</title>
+  <link rel="stylesheet" href="../css/admin-dashboard.css?v=20260807-1" />
+  <link rel="stylesheet" href="../css/admin-export.css?v=20260807-1" />
+  <link rel="stylesheet" href="../css/admin-cleanup.css?v=20260807-1" />
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+</head>
+<body>
+
+  <!-- SIDEBAR / DRAWER -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <img src="../assets/logo_bedjo.png" alt="Bedjo Cleaner" class="logo-img"/>
+      <span class="logo-text">Bedjo Cleaner</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="admin-dashboard.html" class="nav-item" id="nav-dashboard">
+        <i class="fa-solid fa-house"></i>
+        <span>Dashboard</span>
+      </a>
+      <a href="users.html" class="nav-item" id="nav-users">
+        <i class="fa-solid fa-users"></i>
+        <span>Users</span>
+      </a>
+      <a href="export.html" class="nav-item" id="nav-export">
+        <i class="fa-solid fa-file-export"></i>
+        <span>Export Data</span>
+      </a>
+      <a href="cleanup.html" class="nav-item active" id="nav-cleanup">
+        <i class="fa-solid fa-box-archive"></i>
+        <span>Arsip & Cleanup</span>
+      </a>
+    </nav>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-wrapper" id="mainWrapper">
+
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" id="hamburgerBtn">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <h1 class="page-title" id="pageTitle">Arsip & Cleanup</h1>
+      </div>
+      <div class="topbar-right">
+        <div class="user-info" id="userDropdownToggle">
+          <div class="user-avatar-box">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2148C0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+          </div>
+          <div class="user-text">
+            <span class="user-name" id="topbarName">Admin</span>
+            <span class="user-role" id="topbarRole">Admin</span>
+          </div>
+          <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
+        </div>
+        <div class="dropdown-menu" id="userDropdown">
+          <button type="button" class="dd-logout" id="logoutBtn">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            Logout
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- PAGE CONTENT -->
+    <main class="content">
+
+      <div class="card">
+        <h2 class="card-title">Arsip & Cleanup Media</h2>
+        <p class="export-subtitle">
+          Backup yang sudah diverifikasi. Media (foto order, selfie absensi, bukti
+          pembayaran) baru bisa dibersihkan dari Storage setelah masa retensi 60 hari
+          sejak akhir periode terlampaui. Data order, payment, attendance, dan QR
+          tracking TIDAK PERNAH terpengaruh -- hanya file media yang dihapus.
+        </p>
+
+        <div id="cleanupListError" class="cleanup-list-error"></div>
+        <div id="verificationsList" class="verifications-list">
+          <p class="cleanup-empty">Memuat daftar backup terverifikasi...</p>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- PREVIEW / CONFIRM MODAL -->
+  <div class="modal-overlay" id="previewModal">
+    <div class="modal cleanup-modal">
+      <h3 class="modal-title">Preview Cleanup</h3>
+
+      <div id="previewLoading" class="cleanup-empty">Menghitung...</div>
+
+      <div id="previewContent" class="preview-content" style="display:none;">
+        <div class="preview-row">
+          <span>Order photos</span>
+          <span id="previewOrderPhotos">0 files / 0 MB</span>
+        </div>
+        <div class="preview-row">
+          <span>Attendance selfies</span>
+          <span id="previewAttendanceSelfies">0 files / 0 MB</span>
+        </div>
+        <div class="preview-row">
+          <span>Payment proofs</span>
+          <span id="previewPaymentProofs">0 files / 0 MB</span>
+        </div>
+        <div class="preview-row preview-missing">
+          <span>Already missing</span>
+          <span id="previewMissing">0 files</span>
+        </div>
+        <div class="preview-row preview-total">
+          <span>Total</span>
+          <span id="previewTotal">0 files / 0 MB</span>
+        </div>
+
+        <p class="cleanup-warning">
+          File media ini akan dihapus permanen dari Supabase Storage.
+          Data order, payment, attendance, dan QR tracking tetap disimpan.
+        </p>
+
+        <label class="checkbox-item verify-confirm">
+          <input type="checkbox" id="cleanupConfirmCheckbox"/>
+          <span>Saya sudah memastikan backup tersedia di Google Drive.</span>
+        </label>
+
+        <div id="cleanupError" class="cleanup-list-error"></div>
+        <div id="cleanupResultText" class="verify-success-text"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" id="closePreviewBtn">Tutup</button>
+        <button class="btn-submit cleanup-danger-btn" id="confirmCleanupBtn" disabled>
+          Hapus Media Terarsip
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/supabase.js?v=20260807-1"></script>
+  <script src="../js/auth-guard.js?v=20260807-1"></script>
+  <script src="../js/admin-cleanup.js?v=20260807-1"></script>
+</body>
+</html>

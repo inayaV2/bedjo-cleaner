@@ -1,0 +1,200 @@
+/* =============================================
+   admin-export.css — Export Data page
+   Supplements admin-dashboard.css (sidebar/topbar/card/form-input/btn-submit)
+   ============================================= */
+
+.export-card {
+  max-width: 720px;
+}
+
+.export-subtitle {
+  font-size: 13px;
+  color: var(--text-sub);
+  margin-bottom: 18px;
+}
+
+.preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.btn-preset {
+  padding: 8px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  background: #fff;
+  font-family: var(--font);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.btn-preset:hover {
+  background: var(--sidebar-hover);
+}
+
+.btn-preset.active {
+  background: var(--blue-light);
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.date-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.range-hint {
+  font-size: 12px;
+  color: var(--text-sub);
+  margin: -8px 0 14px;
+}
+
+.range-hint.range-error {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.data-type-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 18px;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.checkbox-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--blue);
+  cursor: pointer;
+}
+
+.export-error {
+  display: none;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  margin: 6px 0 14px;
+}
+
+.export-error.visible {
+  display: block;
+}
+
+.export-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.export-submit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.fa-spinner {
+  animation: export-spin 0.8s linear infinite;
+}
+
+@keyframes export-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 640px) {
+  .date-row { grid-template-columns: 1fr; }
+  .data-type-grid { grid-template-columns: 1fr; }
+}
+
+/* ── STEP 21D: verification panel ── */
+.verification-panel {
+  display: none;
+  margin-top: 18px;
+  padding: 16px 18px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  background: var(--gray-light);
+}
+
+.verification-panel.visible {
+  display: block;
+}
+
+.verify-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--green);
+  margin-bottom: 10px;
+}
+
+.verify-label {
+  font-size: 12px;
+  color: var(--text-sub);
+  margin-bottom: 4px;
+}
+
+.sha-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.sha-value {
+  font-size: 12px;
+  word-break: break-all;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.verify-confirm {
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.verify-confirm input {
+  margin-top: 2px;
+}
+
+.verify-success-text {
+  font-size: 13px;
+  color: var(--green);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+#verifyPanelError {
+  display: none;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+#verifyPanelError:not(:empty) {
+  display: block;
+}

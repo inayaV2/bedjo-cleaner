@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Bedjo Cleaner – Export Data</title>
+  <link rel="stylesheet" href="../css/admin-dashboard.css?v=20260807-1" />
+  <link rel="stylesheet" href="../css/admin-export.css?v=20260807-1" />
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+</head>
+<body>
+
+  <!-- SIDEBAR / DRAWER -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <img src="../assets/logo_bedjo.png" alt="Bedjo Cleaner" class="logo-img"/>
+      <span class="logo-text">Bedjo Cleaner</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="admin-dashboard.html" class="nav-item" id="nav-dashboard">
+        <i class="fa-solid fa-house"></i>
+        <span>Dashboard</span>
+      </a>
+      <a href="users.html" class="nav-item" id="nav-users">
+        <i class="fa-solid fa-users"></i>
+        <span>Users</span>
+      </a>
+      <a href="export.html" class="nav-item active" id="nav-export">
+        <i class="fa-solid fa-file-export"></i>
+        <span>Export Data</span>
+      </a>
+      <a href="cleanup.html" class="nav-item" id="nav-cleanup">
+        <i class="fa-solid fa-box-archive"></i>
+        <span>Arsip & Cleanup</span>
+      </a>
+    </nav>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-wrapper" id="mainWrapper">
+
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger" id="hamburgerBtn">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <h1 class="page-title" id="pageTitle">Export Data</h1>
+      </div>
+      <div class="topbar-right">
+        <div class="user-info" id="userDropdownToggle">
+          <div class="user-avatar-box">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2148C0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+          </div>
+          <div class="user-text">
+            <span class="user-name" id="topbarName">Admin</span>
+            <span class="user-role" id="topbarRole">Admin</span>
+          </div>
+          <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
+        </div>
+        <div class="dropdown-menu" id="userDropdown">
+          <button type="button" class="dd-logout" id="logoutBtn">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            Logout
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- PAGE CONTENT -->
+    <main class="content">
+
+      <div class="card export-card">
+        <h2 class="card-title">Export Data</h2>
+        <p class="export-subtitle">
+          Unduh data Bedjo (orders, foto, absensi, payments) per cabang dan rentang tanggal
+          sebagai satu file ZIP. Maksimum rentang: 31 hari.
+        </p>
+
+        <!-- BRANCH -->
+        <div class="form-group">
+          <label>Cabang</label>
+          <select id="branchSelect" class="form-input">
+            <option value="all">Semua Cabang</option>
+          </select>
+        </div>
+
+        <!-- DATE PRESETS -->
+        <div class="form-group">
+          <label>Rentang Tanggal</label>
+          <div class="preset-row" id="presetRow">
+            <button type="button" class="btn-preset" data-preset="today">Hari Ini</button>
+            <button type="button" class="btn-preset" data-preset="yesterday">Kemarin</button>
+            <button type="button" class="btn-preset" data-preset="last3">3 Hari</button>
+            <button type="button" class="btn-preset" data-preset="last7">7 Hari</button>
+            <button type="button" class="btn-preset" data-preset="thisMonth">Bulan Ini</button>
+            <button type="button" class="btn-preset" data-preset="custom">Custom</button>
+          </div>
+        </div>
+
+        <div class="date-row">
+          <div class="form-group">
+            <label>Dari Tanggal</label>
+            <input type="date" id="startDateInput" class="form-input"/>
+          </div>
+          <div class="form-group">
+            <label>Sampai Tanggal</label>
+            <input type="date" id="endDateInput" class="form-input"/>
+          </div>
+        </div>
+        <p class="range-hint" id="rangeHint">Maksimum rentang export: 31 hari.</p>
+
+        <!-- DATA TYPES -->
+        <div class="form-group">
+          <label>Data</label>
+          <div class="data-type-grid" id="dataTypeGrid">
+            <label class="checkbox-item">
+              <input type="checkbox" value="orders" checked/>
+              <span>Orders</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" value="order_photos" checked/>
+              <span>Foto Order</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" value="attendance" checked/>
+              <span>Absensi</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" value="attendance_selfies" checked/>
+              <span>Foto Absensi</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" value="payments" checked/>
+              <span>Payments</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" value="payment_proofs" checked/>
+              <span>Payment Proofs</span>
+            </label>
+          </div>
+        </div>
+
+        <div id="exportError" class="export-error" role="alert"></div>
+
+        <button class="btn-submit export-submit" id="downloadBtn">
+          <span id="downloadBtnLabel"><i class="fa-solid fa-file-zipper"></i> Download ZIP</span>
+        </button>
+
+        <!-- STEP 21D: panel verifikasi backup, muncul setelah ZIP berhasil diunduh -->
+        <div class="verification-panel" id="verificationPanel">
+          <p class="verify-title"><i class="fa-solid fa-circle-check"></i> Backup downloaded successfully</p>
+          <p class="verify-label">SHA256:</p>
+          <div class="sha-row">
+            <code class="sha-value" id="zipShaText"></code>
+            <button type="button" class="btn-preset" id="copySha256Btn">Salin SHA256</button>
+          </div>
+
+          <label class="checkbox-item verify-confirm">
+            <input type="checkbox" id="verifyCheckbox"/>
+            <span>Saya sudah memastikan file ZIP berhasil diunduh, dapat dibuka, dan sudah disimpan/upload ke Google Drive.</span>
+          </label>
+
+          <div id="verifyPanelError"></div>
+          <div id="verifySuccessText" class="verify-success-text"></div>
+
+          <button type="button" class="btn-submit" id="verifyBackupBtn" disabled>
+            Verifikasi Backup
+          </button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- STEP 21D: JSZip dipakai HANYA untuk MEMBACA ulang ZIP hasil download
+       (mengekstrak archive_manifest.json untuk dikirim ke
+       verify-export-backup) -- bukan untuk membuat ZIP (itu tetap 100% di
+       server/export-data). -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="../js/supabase.js?v=20260807-1"></script>
+  <script src="../js/auth-guard.js?v=20260807-1"></script>
+  <script src="../js/admin-export.js?v=20260807-1"></script>
+</body>
+</html>
