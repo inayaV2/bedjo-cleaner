@@ -533,6 +533,43 @@ function escapeAttr(value) {
   return escapeHtml(value).replaceAll("`", "&#096;");
 }
 
+// STEP 22D -- placeholder foto dibangun lewat DOM API murni (createElement +
+// textContent), BUKAN template string HTML -- supaya bisa dipakai ulang baik
+// untuk signed_url:null (dari response) maupun kegagalan <img> saat runtime
+// (404/403/URL expired), tanpa risiko injeksi dan tanpa atribut onerror="".
+function buildPhotoPlaceholder() {
+  const placeholder = document.createElement("div");
+  placeholder.className = "no-photo";
+  placeholder.textContent = "Foto tidak tersedia";
+  return placeholder;
+}
+
+// Satu elemen foto: <img> kalau signed_url ada, placeholder kalau tidak.
+// Listener "error" dipasang lewat addEventListener (bukan onerror inline) --
+// kalau <img> gagal dimuat saat runtime (object sudah dihapus/URL sudah
+// expired SETELAH response dibuat), HANYA gambar itu yang diganti dengan
+// placeholder yang sama persis; foto lain, ringkasan order, dan timeline
+// TIDAK PERNAH ikut terpengaruh. Tanpa fallback ke public URL apa pun.
+function buildPhotoElement(url, index) {
+  if (!url) {
+    return buildPhotoPlaceholder();
+  }
+
+  const img = document.createElement("img");
+  img.src = url;
+  img.alt = `Foto item ${index + 1}`;
+  img.loading = "lazy";
+  img.addEventListener(
+    "error",
+    () => {
+      img.replaceWith(buildPhotoPlaceholder());
+    },
+    { once: true }
+  );
+
+  return img;
+}
+
 function renderPhoto(order) {
   const grid = document.getElementById("order-photos-grid");
   const noPhoto = document.getElementById("no-photo");
@@ -543,13 +580,11 @@ function renderPhoto(order) {
 
   if (photos.length) {
     // Hanya memakai signed_url dari response Edge Function; tanpa fallback URL publik.
-    grid.innerHTML = photos.map((photo, index) => {
+    grid.innerHTML = "";
+    photos.forEach((photo, index) => {
       const url = typeof photo.signed_url === "string" ? photo.signed_url.trim() : "";
-      if (!url) {
-        return `<div class="no-photo">Foto tidak tersedia</div>`;
-      }
-      return `<img src="${escapeAttr(url)}" alt="Foto item ${index + 1}" loading="lazy" />`;
-    }).join("");
+      grid.appendChild(buildPhotoElement(url, index));
+    });
     return;
   }
 

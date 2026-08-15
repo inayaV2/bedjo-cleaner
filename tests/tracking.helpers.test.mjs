@@ -192,3 +192,210 @@ test("tidak ada literal hardcode Ciwalk di source tracking.js", () => {
     "tracking.js tidak boleh mengandung string literal Ciwalk",
   );
 });
+
+// ---------------------------------------------------------------------------
+// STEP 22D -- renderPhoto/buildPhotoElement: fallback foto hilang/gagal.
+//
+// stubElement() di atas (dipakai loadTrackingModule() untuk test lain)
+// sengaja TIDAK mendukung createElement/appendChild/replaceWith/
+// addEventListener secara stateful -- supaya test lain tidak berubah
+// perilakunya, blok ini memakai loader + fake DOM node TERPISAH, khusus
+// untuk menguji manipulasi DOM foto (bukan cuma fungsi murni).
+// ---------------------------------------------------------------------------
+
+function createFakeNode(tag) {
+  const listeners = {};
+  let innerHtmlValue = "";
+  const node = {
+    tagName: String(tag || "").toUpperCase(),
+    children: [],
+    parentNode: null,
+    className: "",
+    textContent: "",
+    src: "",
+    alt: "",
+    loading: "",
+    classList: {
+      _set: new Set(),
+      add(c) {
+        this._set.add(c);
+      },
+      remove(c) {
+        this._set.delete(c);
+      },
+      contains(c) {
+        return this._set.has(c);
+      },
+    },
+    addEventListener(type, cb) {
+      (listeners[type] ||= []).push(cb);
+    },
+    appendChild(child) {
+      node.children.push(child);
+      child.parentNode = node;
+      return child;
+    },
+    replaceWith(newNode) {
+      const parent = node.parentNode;
+      if (!parent) return;
+      const idx = parent.children.indexOf(node);
+      if (idx !== -1) {
+        parent.children[idx] = newNode;
+        newNode.parentNode = parent;
+        node.parentNode = null;
+      }
+    },
+    // Test-only helper -- mensimulasikan browser memicu event "error" pada
+    // <img> ini (object Storage sudah dihapus / signed URL sudah expired
+    // setelah response dibuat).
+    _fireError() {
+      (listeners.error || []).forEach((cb) => cb());
+    },
+  };
+  Object.defineProperty(node, "innerHTML", {
+    get() {
+      return innerHtmlValue;
+    },
+    set(value) {
+      innerHtmlValue = value;
+      node.children = [];
+    },
+  });
+  return node;
+}
+
+function loadTrackingModuleForPhotoTests() {
+  const grid = createFakeNode("div");
+  const noPhotoTemplate = createFakeNode("div");
+  noPhotoTemplate.classList.add("hidden");
+
+  const elementsById = {
+    "order-photos-grid": grid,
+    "no-photo": noPhotoTemplate,
+  };
+
+  const sandbox = {
+    console,
+    URLSearchParams,
+    fetch: async () => ({ ok: false }),
+    window: {},
+    document: {
+      addEventListener: () => {},
+      getElementById: (id) => elementsById[id] || stubElement(),
+      querySelectorAll: () => [],
+      createElement: (tag) => createFakeNode(tag),
+    },
+  };
+  sandbox.window.location = { search: "", pathname: "/" };
+  sandbox.window.history = { replaceState: () => {} };
+  sandbox.self = sandbox;
+  vm.createContext(sandbox);
+  vm.runInContext(code, sandbox, { filename: "tracking.js" });
+  return { mod: sandbox, grid, noPhotoTemplate };
+}
+
+test("photos: [] -> placeholder 'Tidak ada foto' ditampilkan", () => {
+  const { mod, grid, noPhotoTemplate } = loadTrackingModuleForPhotoTests();
+
+  mod.renderPhoto({ order_photos: [] });
+
+  assert.ok(grid.children.includes(noPhotoTemplate));
+  assert.equal(noPhotoTemplate.classList.contains("hidden"), false);
+});
+
+test("satu signed_url null -> 'Foto tidak tersedia'", () => {
+  const { mod, grid } = loadTrackingModuleForPhotoTests();
+
+  mod.renderPhoto({ order_photos: [{ signed_url: null }] });
+
+  assert.equal(grid.children.length, 1);
+  assert.equal(grid.children[0].className, "no-photo");
+  assert.equal(grid.children[0].textContent, "Foto tidak tersedia");
+});
+
+test("SEMUA signed_url null -> semua jadi placeholder, tidak ada <img>", () => {
+  const { mod, grid } = loadTrackingModuleForPhotoTests();
+
+  mod.renderPhoto({
+    order_photos: [{ signed_url: null }, { signed_url: null }],
+  });
+
+  assert.equal(grid.children.length, 2);
+  for (const child of grid.children) {
+    assert.equal(child.className, "no-photo");
+    assert.equal(child.textContent, "Foto tidak tersedia");
+    assert.notEqual(child.tagName, "IMG");
+  }
+});
+
+test("signed_url valid -> tetap render <img> normal", () => {
+  const { mod, grid } = loadTrackingModuleForPhotoTests();
+
+  mod.renderPhoto({
+    order_photos: [{ signed_url: "https://signed.example/a.jpg" }],
+  });
+
+  assert.equal(grid.children.length, 1);
+  assert.equal(grid.children[0].tagName, "IMG");
+  assert.equal(grid.children[0].src, "https://signed.example/a.jpg");
+  assert.equal(grid.children[0].alt, "Foto item 1");
+});
+
+test("kegagalan load <img> saat runtime -> gambar itu berubah jadi placeholder", () => {
+  const { mod, grid } = loadTrackingModuleForPhotoTests();
+
+  mod.renderPhoto({
+    order_photos: [{ signed_url: "https://signed.example/a.jpg" }],
+  });
+
+  const img = grid.children[0];
+  assert.equal(img.tagName, "IMG");
+
+  // Simulasikan browser gagal memuat <img> (404/403/URL expired).
+  img._fireError();
+
+  assert.equal(grid.children.length, 1);
+  assert.equal(grid.children[0].className, "no-photo");
+  assert.equal(grid.children[0].textContent, "Foto tidak tersedia");
+  assert.notEqual(grid.children[0], img);
+});
+
+test("satu <img> gagal load TIDAK mempengaruhi foto lain yang masih valid", () => {
+  const { mod, grid } = loadTrackingModuleForPhotoTests();
+
+  mod.renderPhoto({
+    order_photos: [
+      { signed_url: "https://signed.example/a.jpg" },
+      { signed_url: "https://signed.example/b.jpg" },
+    ],
+  });
+
+  assert.equal(grid.children.length, 2);
+  const [imgA, imgB] = grid.children;
+  assert.equal(imgA.tagName, "IMG");
+  assert.equal(imgB.tagName, "IMG");
+
+  imgA._fireError();
+
+  assert.equal(grid.children.length, 2);
+  assert.equal(grid.children[0].className, "no-photo");
+  // Foto kedua tidak diganti/disentuh sama sekali -- object <img> yang
+  // sama, src tetap utuh.
+  assert.equal(grid.children[1], imgB);
+  assert.equal(grid.children[1].tagName, "IMG");
+  assert.equal(grid.children[1].src, "https://signed.example/b.jpg");
+});
+
+test("renderPhoto tidak pernah throw untuk kombinasi foto valid/null/gagal -- sisa halaman tracking tetap bisa lanjut render", () => {
+  const { mod } = loadTrackingModuleForPhotoTests();
+
+  assert.doesNotThrow(() => {
+    mod.renderPhoto({
+      order_photos: [
+        { signed_url: "https://signed.example/a.jpg" },
+        { signed_url: null },
+        {},
+      ],
+    });
+  });
+});
