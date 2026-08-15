@@ -127,3 +127,31 @@
   cursor: not-allowed;
   opacity: 0.6;
 }
+
+/* STEP 22F.2 -- konfirmasi ketik-ulang "HAPUS MEDIA", menggantikan
+   checkbox lama. */
+.cleanup-confirm-field {
+  margin: 14px 0;
+}
+
+.cleanup-confirm-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 6px;
+}
+
+.cleanup-confirm-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.cleanup-confirm-input:focus {
+  outline: none;
+  border-color: #dc2626;
+}

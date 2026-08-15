@@ -123,14 +123,27 @@
         </div>
 
         <p class="cleanup-warning">
-          File media ini akan dihapus permanen dari Supabase Storage.
-          Data order, payment, attendance, dan QR tracking tetap disimpan.
+          Penghapusan dari Supabase Storage <strong>TIDAK BISA dibatalkan</strong>.
+          Pastikan backup ZIP sudah benar-benar tersimpan di luar sistem
+          (mis. Google Drive) sebelum melanjutkan. Data order, payment,
+          attendance, dan riwayat lain di database TIDAK PERNAH terpengaruh --
+          hanya file media yang tercatat pada manifest backup terverifikasi
+          ini yang akan dihapus. Setelah dihapus, foto lama pada halaman
+          tracking publik bisa menampilkan "Foto tidak tersedia".
         </p>
 
-        <label class="checkbox-item verify-confirm">
-          <input type="checkbox" id="cleanupConfirmCheckbox"/>
-          <span>Saya sudah memastikan backup tersedia di Google Drive.</span>
-        </label>
+        <div class="cleanup-confirm-field">
+          <label for="cleanupConfirmInput" class="cleanup-confirm-label">
+            Ketik <strong>HAPUS MEDIA</strong> untuk melanjutkan
+          </label>
+          <input
+            type="text"
+            id="cleanupConfirmInput"
+            class="cleanup-confirm-input"
+            placeholder="HAPUS MEDIA"
+            autocomplete="off"
+          />
+        </div>
 
         <div id="cleanupError" class="cleanup-list-error"></div>
         <div id="cleanupResultText" class="verify-success-text"></div>

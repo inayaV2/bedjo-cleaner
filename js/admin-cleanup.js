@@ -3,7 +3,9 @@
 // STEP 21D -- "Arsip & Cleanup" page. Lists verified backup periods
 // (export_backup_verifications, admin-only SELECT RLS), lets admin preview
 // a cleanup (dry_run:true, ZERO deletions) and, once retention (60 hari
-// sejak end_date) is reached and the confirmation checkbox is ticked,
+// sejak end_date) is reached and the admin types the exact confirmation
+// phrase "HAPUS MEDIA" (STEP 22F.2 -- replaces the old single-checkbox
+// gate, matching the Flutter Admin app's typed-confirmation standard),
 // trigger the real cleanup (dry_run:false) via the cleanup-media Edge
 // Function -- same authenticated-fetch pattern as export-data/
 // verify-export-backup (never supabaseClient.functions.invoke(), see
@@ -14,18 +16,37 @@ if (!session || session.role !== "admin") window.location.href = "../login.html"
 
 const RETENTION_DAYS = 60;
 
+// STEP 22F.2 -- frasa konfirmasi ketik-ulang, SAMA PERSIS dengan
+// kCleanupConfirmationPhrase di Flutter
+// (lib/features/admin/archive_cleanup/archive_cleanup_helpers.dart).
+// Dipakai lewat isCleanupConfirmationValid() di bawah -- TIDAK diduplikasi
+// sebagai literal string di handler lain.
+const CLEANUP_CONFIRMATION_PHRASE = "HAPUS MEDIA";
+
 let verifications = [];
 let activeVerificationId = null;
 let previewInProgress = false;
 let cleanupInProgress = false;
+// Sekali real cleanup SUKSES untuk verification_id yang sedang dibuka,
+// modal ini tidak boleh mengizinkan submit lagi (cegah dobel-klik hapus
+// untuk verifikasi yang sama) -- direset setiap kali Preview modal baru
+// dibuka (openPreview) atau ditutup (closePreviewModal).
+let cleanupCompleted = false;
 
 document.addEventListener("DOMContentLoaded", async () => {
   initShell();
   await loadVerifications();
   document.getElementById("closePreviewBtn")?.addEventListener("click", closePreviewModal);
-  document.getElementById("cleanupConfirmCheckbox")?.addEventListener("change", updateConfirmButtonState);
+  document.getElementById("cleanupConfirmInput")?.addEventListener("input", updateConfirmButtonState);
   document.getElementById("confirmCleanupBtn")?.addEventListener("click", runRealCleanup);
 });
+
+// Perbandingan EXACT (case-sensitive) setelah trim -- TIDAK menerima huruf
+// kecil, teks sebagian, maupun frasa lain. Fungsi murni, gampang diuji
+// tanpa DOM sama sekali.
+function isCleanupConfirmationValid(value) {
+  return String(value ?? "").trim() === CLEANUP_CONFIRMATION_PHRASE;
+}
 
 function initShell() {
   setText("topbarName", session?.name || "Admin");
@@ -129,17 +150,20 @@ function renderVerifications() {
 async function openPreview(verificationId) {
   if (previewInProgress) return;
   activeVerificationId = verificationId;
+  // Verifikasi berbeda (atau preview diulang) -> confirmation state TIDAK
+  // PERNAH terbawa dari dialog sebelumnya.
+  cleanupCompleted = false;
 
   const modal = document.getElementById("previewModal");
   const loading = document.getElementById("previewLoading");
   const content = document.getElementById("previewContent");
-  const confirmCheckbox = document.getElementById("cleanupConfirmCheckbox");
+  const confirmInput = document.getElementById("cleanupConfirmInput");
   const confirmBtn = document.getElementById("confirmCleanupBtn");
 
   modal?.classList.add("open");
   if (loading) loading.style.display = "block";
   if (content) content.style.display = "none";
-  if (confirmCheckbox) confirmCheckbox.checked = false;
+  if (confirmInput) confirmInput.value = "";
   if (confirmBtn) confirmBtn.disabled = true;
   setText("cleanupError", "");
   setText("cleanupResultText", "");
@@ -183,14 +207,20 @@ function formatFilesBytes(stat) {
 function closePreviewModal() {
   document.getElementById("previewModal")?.classList.remove("open");
   activeVerificationId = null;
+  cleanupCompleted = false;
+  // Buang nilai yang sudah diketik -- membuka modal lain (atau modal yang
+  // sama lagi) TIDAK PERNAH mewarisi ketikan sebelumnya.
+  const confirmInput = document.getElementById("cleanupConfirmInput");
+  if (confirmInput) confirmInput.value = "";
 }
 
 function updateConfirmButtonState() {
-  const checkbox = document.getElementById("cleanupConfirmCheckbox");
+  const input = document.getElementById("cleanupConfirmInput");
   const btn = document.getElementById("confirmCleanupBtn");
   if (!btn) return;
   const eligible = btn.dataset.eligible === "true";
-  btn.disabled = !eligible || !checkbox?.checked || cleanupInProgress;
+  const confirmed = isCleanupConfirmationValid(input?.value);
+  btn.disabled = !eligible || !confirmed || cleanupInProgress || cleanupCompleted;
 }
 
 // ---------------------------------------------------------------------------
@@ -199,9 +229,13 @@ function updateConfirmButtonState() {
 // ---------------------------------------------------------------------------
 
 async function runRealCleanup() {
-  if (cleanupInProgress || !activeVerificationId) return;
-  const checkbox = document.getElementById("cleanupConfirmCheckbox");
-  if (!checkbox?.checked) return;
+  if (cleanupInProgress || cleanupCompleted || !activeVerificationId) return;
+  // Defense-in-depth: cek ulang frasa konfirmasi di sini, bukan cuma
+  // percaya confirmCleanupBtn.disabled (yang dikontrol updateConfirmButtonState)
+  // -- pola yang sama seperti _confirmAndDelete() mengecek ulang _canDelete
+  // di Flutter (archive_cleanup_page.dart).
+  const input = document.getElementById("cleanupConfirmInput");
+  if (!isCleanupConfirmationValid(input?.value)) return;
 
   cleanupInProgress = true;
   updateConfirmButtonState();
@@ -213,6 +247,10 @@ async function runRealCleanup() {
       setText("cleanupError", result.message);
       return;
     }
+    // HANYA hasil SUKSES yang mengunci submit lanjutan di modal ini --
+    // error (mis. masalah koneksi) tetap boleh dicoba ulang tanpa perlu
+    // membuka ulang modal.
+    cleanupCompleted = true;
     const report = result.data;
     setText(
       "cleanupResultText",
