@@ -194,6 +194,146 @@ test("tidak ada literal hardcode Ciwalk di source tracking.js", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Add Product feature -- item_kind='product' TIDAK PERNAH punya business
+// line/jenis layanan/cabang pengerjaan laundry. isProductTrackingItem +
+// renderOrderItems (baris Jenis Usaha/Jenis Layanan/Cabang Pengerjaan
+// dihilangkan sama sekali untuk produk, bukan diisi fallback fabrikasi
+// "Bedjo Cleaner"/"Cuci") harus terbukti lewat HTML yang benar-benar
+// dihasilkan, bukan cuma helper murni.
+// ---------------------------------------------------------------------------
+
+test("isProductTrackingItem: true hanya untuk item_kind='product'", () => {
+  assert.equal(mod.isProductTrackingItem({ item_kind: "product" }), true);
+  assert.equal(mod.isProductTrackingItem({ item_kind: "PRODUCT" }), true);
+  assert.equal(mod.isProductTrackingItem({ item_kind: "service" }), false);
+  assert.equal(mod.isProductTrackingItem({}), false);
+});
+
+function loadTrackingModuleForItemsTests() {
+  const itemsList = stubElement();
+  const elementsById = { "order-items-list": itemsList };
+
+  const sandbox = {
+    console,
+    URLSearchParams,
+    fetch: async () => ({ ok: false }),
+    window: {},
+    document: {
+      addEventListener: () => {},
+      getElementById: (id) => elementsById[id] || stubElement(),
+      querySelectorAll: () => [],
+      createElement: () => stubElement(),
+    },
+  };
+  sandbox.window.location = { search: "", pathname: "/" };
+  sandbox.window.history = { replaceState: () => {} };
+  sandbox.self = sandbox;
+  vm.createContext(sandbox);
+  vm.runInContext(code, sandbox, { filename: "tracking.js" });
+  return { mod: sandbox, itemsList };
+}
+
+test("renderOrderItems: item produk TIDAK menampilkan Bedjo Cleaner/Cuci fabrikasi", () => {
+  const { mod: itemsMod, itemsList } = loadTrackingModuleForItemsTests();
+
+  itemsMod.renderOrderItems(
+    [
+      {
+        item_kind: "product",
+        item_type: "Paperbag",
+        service_id: null,
+        service_type: null,
+        services: null,
+        handling_type: null,
+        handling_branch_id: null,
+        handling_branch_name: null,
+        quantity: 3,
+        price: 5000,
+        subtotal: 15000,
+        notes: "Bungkus rapi",
+        status: "active",
+      },
+    ],
+    "Bedjo BEST",
+  );
+
+  const html = itemsList.innerHTML;
+  assert.ok(html.includes("Paperbag"), "nama produk harus tampil");
+  assert.ok(html.includes("3 x"), "qty harus tampil");
+  assert.ok(html.includes("Rp 5.000"), "harga satuan harus tampil");
+  assert.ok(html.includes("Rp 15.000"), "subtotal harus tampil");
+  assert.ok(html.includes("Bungkus rapi"), "catatan harus tampil");
+  assert.ok(!html.includes("Jenis Usaha"), "baris Jenis Usaha harus dihilangkan untuk produk");
+  assert.ok(!html.includes("Jenis Layanan"), "baris Jenis Layanan harus dihilangkan untuk produk");
+  assert.ok(!html.includes("Cabang Pengerjaan"), "baris Cabang Pengerjaan harus dihilangkan untuk produk");
+  assert.ok(!html.includes("Bedjo Cleaner"), "tidak boleh fabrikasi Bedjo Cleaner untuk produk");
+  assert.ok(!html.includes(">Cuci<"), "tidak boleh fabrikasi label Cuci untuk produk");
+  assert.ok(!html.includes("undefined"), "tidak boleh ada 'undefined' di HTML");
+  assert.ok(!html.includes(">null<"), "tidak boleh ada 'null' mentah di HTML");
+});
+
+test("renderOrderItems: item service TETAP tampil Jenis Usaha/Jenis Layanan/Cabang Pengerjaan seperti sebelumnya", () => {
+  const { mod: itemsMod, itemsList } = loadTrackingModuleForItemsTests();
+
+  itemsMod.renderOrderItems(
+    [
+      {
+        item_kind: "service",
+        item_type: "Sepatu",
+        service_id: "svc-1",
+        service_type: "Regular Clean Shoes",
+        services: {
+          name: "Regular Clean Shoes - Canvas",
+          business_line: "bedjo_cleaner",
+        },
+        handling_type: "cuci",
+        quantity: 1,
+        price: 60000,
+        subtotal: 60000,
+        status: "active",
+      },
+    ],
+    "Bedjo BEST",
+  );
+
+  const html = itemsList.innerHTML;
+  assert.ok(html.includes("Jenis Usaha"), "item service tetap menampilkan Jenis Usaha");
+  assert.ok(html.includes("Jenis Layanan"), "item service tetap menampilkan Jenis Layanan");
+  assert.ok(html.includes("Cabang Pengerjaan"), "item service tetap menampilkan Cabang Pengerjaan");
+  assert.ok(html.includes("Bedjo Cleaner"), "item service tetap menampilkan business line Bedjo Cleaner");
+  assert.ok(html.includes(">Cuci<"), "item service tetap menampilkan label Cuci");
+});
+
+test("renderOrderItems: item produk tanpa catatan aman (tidak ada baris Catatan kosong, tidak error)", () => {
+  const { mod: itemsMod, itemsList } = loadTrackingModuleForItemsTests();
+
+  assert.doesNotThrow(() => {
+    itemsMod.renderOrderItems(
+      [
+        {
+          item_kind: "product",
+          item_type: "Kantong Plastik Besar",
+          service_id: null,
+          service_type: null,
+          services: null,
+          handling_type: null,
+          quantity: 1,
+          price: 3000,
+          subtotal: 3000,
+          status: "active",
+        },
+      ],
+      "Bedjo BEST",
+    );
+  });
+
+  const html = itemsList.innerHTML;
+  assert.ok(html.includes("Kantong Plastik Besar"));
+  assert.ok(!html.includes("undefined"));
+  assert.ok(!html.includes(">null<"));
+});
+
+// ---------------------------------------------------------------------------
 // STEP 22D -- renderPhoto/buildPhotoElement: fallback foto hilang/gagal.
 //
 // stubElement() di atas (dipakai loadTrackingModule() untuk test lain)

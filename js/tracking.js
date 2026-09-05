@@ -204,7 +204,18 @@ function renderOrder(order) {
   helpCardEl?.classList.remove("hidden");
 }
 
-// handling_type kosong/tidak valid (data lama) -> 'cuci'. Sama persis
+// Add Product feature: item_kind='product' berarti baris produk fisik
+// (mis. Paperbag, Kantong Plastik Besar) -- BUKAN item laundry/service.
+// Sama persis dengan isProductOrderItem di order_status.dart dan
+// isProductTrackingItem di Edge Function public-tracking/helpers.ts.
+function isProductTrackingItem(item) {
+  return String(item?.item_kind ?? "").trim().toLowerCase() === "product";
+}
+
+// handling_type kosong/tidak valid (data lama) -> 'cuci'. HANYA berlaku
+// untuk item SERVICE (item_kind='service') -- item PRODUK sengaja punya
+// handling_type null dan TIDAK PERNAH melewati fungsi ini di
+// renderOrderItems (lihat isProductTrackingItem di atas). Sama persis
 // dengan normalizeOrderItemHandlingType di order_status.dart dan
 // normalizeHandlingType di Edge Function.
 function itemHandlingType(item) {
@@ -255,6 +266,7 @@ function renderOrderItems(items, originBranchName = null) {
   }
 
   container.innerHTML = items.map((item, index) => {
+    const isProduct = isProductTrackingItem(item);
     const itemType = cleanValue(item.item_type || item.item_name || item.name);
     const businessLine = itemBusinessLineLabel(item);
     const service = itemServiceLabel(item, itemType);
@@ -275,16 +287,30 @@ function renderOrderItems(items, originBranchName = null) {
     const cancelReason = isCancelled ? cleanValue(item.cancel_reason) : "-";
     const cancelledAt = isCancelled ? formatDate(item.cancelled_at) : "-";
 
+    // Add Product feature: item produk TIDAK PERNAH punya business line/
+    // jenis layanan/cabang pengerjaan laundry -- baris <dt>/<dd> ini
+    // DIHILANGKAN SAMA SEKALI untuk produk (bukan ditampilkan dengan nilai
+    // fallback "Bedjo Cleaner"/"Cuci" yang fabrikasi/menyesatkan).
+    const businessLineRow = isProduct
+      ? ""
+      : `<div><dt>Jenis Usaha</dt><dd>${escapeHtml(businessLine)}</dd></div>`;
+    const handlingTypeRow = isProduct
+      ? ""
+      : `<div><dt>Jenis Layanan</dt><dd class="${valueClass}">${escapeHtml(handlingLabel)}</dd></div>`;
+    const handlingBranchRow = isProduct
+      ? ""
+      : `<div><dt>Cabang Pengerjaan</dt><dd class="${valueClass}">${escapeHtml(handlingBranchLabel)}</dd></div>`;
+
     return `
       <article class="order-item-detail${isCancelled ? " order-item-detail--cancelled" : ""}">
         <p class="order-item-number">Item ${index + 1}</p>
         <p class="order-item-title">${escapeHtml(title)}${isCancelled ? ' <span class="order-item-cancelled-badge">Dibatalkan</span>' : ""}</p>
         <dl class="order-item-fields">
-          <div><dt>Jenis Usaha</dt><dd>${escapeHtml(businessLine)}</dd></div>
+          ${businessLineRow}
           <div><dt>Jenis item</dt><dd>${escapeHtml(itemType)}</dd></div>
           <div><dt>Layanan</dt><dd class="${valueClass}">${escapeHtml(service)}</dd></div>
-          <div><dt>Jenis Layanan</dt><dd class="${valueClass}">${escapeHtml(handlingLabel)}</dd></div>
-          <div><dt>Cabang Pengerjaan</dt><dd class="${valueClass}">${escapeHtml(handlingBranchLabel)}</dd></div>
+          ${handlingTypeRow}
+          ${handlingBranchRow}
           <div><dt>Variant</dt><dd class="${valueClass}">${escapeHtml(variant)}</dd></div>
           <div><dt>Qty</dt><dd class="${valueClass}">${quantity} x ${escapeHtml(formatRupiah(unitPrice, "-"))}</dd></div>
           <div><dt>Subtotal</dt><dd class="${valueClass}">${escapeHtml(formatRupiah(subtotal, "-"))}</dd></div>
